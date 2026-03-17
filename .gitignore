@@ -1,0 +1,40 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.env
+*.venv
+venv/
+backend/venv/
+
+# Django
+*.log
+*.pot
+*.pyc
+
+# SQLite
+*.sqlite3
+
+# Node
+node_modules/
+
+# Build
+dist/
+build/
+
+# VS Code
+.vscode/
+
+# Tauri
+src-tauri/target/
+
+# Mac
+*.DS_Store
+
+# Windows
+Thumbs.db

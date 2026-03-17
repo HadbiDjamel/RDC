@@ -1,0 +1,35 @@
+{
+    "version": "0.2",
+    "language": "en,fr",
+    "words": [
+        "Wilaya",
+        "wilaya",
+        "Pharmacovigilance",
+        "Inconnu",
+        "Incomplètes",
+        "Leucémies",
+        "Lymphomes",
+        "medecin",
+        "Globale",
+        "viewsets",
+        "filterset",
+        "Aucune",
+        "disponible",
+        "incid",
+        "topo",
+        "Vérification",
+        "Microscopique",
+        "Données",
+        "Incid",
+        "Évolution",
+        "trgm",
+        "DzCancer",
+        "CanReg",
+        "glassmorphism"
+    ],
+    "ignorePaths": [
+        "node_modules",
+        "venv",
+        ".git"
+    ]
+}

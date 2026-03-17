@@ -1,0 +1,14 @@
+django
+django-environ
+djangorestframework
+django-cors-headers
+psycopg2-binary
+Phonetic-Fr
+pandas
+openpyxl
+ollama
+langchain_ollama
+pytesseract
+pdf2image
+django-two-factor-auth[phonenumbers,yubikey]
+django-otp-yubikey
