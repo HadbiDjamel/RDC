@@ -1,89 +1,157 @@
 @import "tailwindcss";
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 :root {
-  --glass-bg: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-blur: blur(12px);
-  --accent-blue: #0ea5e9;
-  --accent-emerald: #10b981;
-  --pink-error: #fda4af;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  /* Governmental Professional Palette - Balanced Edition */
+  --primary: #334155;       /* Slate 700 - Professional & Solid */
+  --primary-dark: #1e293b;  /* Slate 800 */
+  --primary-light: #475569; /* Slate 600 */
+  --accent: #2563eb;        /* Blue 600 - Trustworthy Action */
+  --accent-hover: #1d4ed8;
+  --bg-main: #f8fafc;       /* Slate 50 - Soft neutral background */
+  --bg-card: #ffffff;
+  --bg-sidebar: #1e293b;    /* Slate 800 - Dark but not black */
+  --border-color: #e2e8f0;  /* Slate 200 - Clean dividers */
+  --border-light: #f1f5f9;  /* Slate 100 */
+  --text-main: #0f172a;     /* Slate 900 - High legibility */
+  --text-secondary: #475569;/* Slate 600 */
+  --text-muted: #94a3b8;    /* Slate 400 */
+  --success: #059669;       /* Emerald 600 */
+  --success-bg: #ecfdf5;
+  --warning: #d97706;       /* Amber 600 */
+  --warning-bg: #fffbeb;
+  --danger: #dc2626;        /* Red 600 */
+  --danger-bg: #fef2f2;
+  --info: #0ea5e9;          /* Sky 500 */
+  --info-bg: #f0f9ff;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --radius: 8px;
 }
 
-@keyframes pink-pulse {
-  0% {
-    background: rgba(244, 63, 94, 0.05);
-    border-color: rgba(244, 63, 94, 0.2);
-  }
-
-  50% {
-    background: rgba(244, 63, 94, 0.15);
-    border-color: rgba(244, 63, 94, 0.5);
-  }
-
-  100% {
-    background: rgba(244, 63, 94, 0.05);
-    border-color: rgba(244, 63, 94, 0.2);
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
   padding: 0;
-  background: var(--bg-gradient);
-  color: var(--text-primary);
-  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
   min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── Base Card System ─────────────────────────────────────────── */
+.portal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.portal-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: #c1cad6;
 }
 
 .glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.glass-input {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--glass-border);
-  color: #fff;
-  padding: 0.75rem;
-  border-radius: 8px;
-  transition: all 0.3s ease;
+.glass-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: #c1cad6;
 }
 
-.glass-input:focus {
-  border-color: var(--accent-blue);
-  background: rgba(255, 255, 255, 0.1);
+/* ── Form Controls ───────────────────────────────────────────── */
+.portal-input {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
   outline: none;
 }
 
-.pink-field {
-  background: rgba(253, 164, 175, 0.15) !important;
-  border-color: var(--pink-error) !important;
+.portal-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(29, 111, 181, 0.12);
 }
 
+.glass-input {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
+}
+
+.glass-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(29, 111, 181, 0.12);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+.portal-button-primary {
+  background-color: var(--accent);
+  color: white;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.portal-button-primary:hover {
+  background-color: var(--accent-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.portal-button-primary:active {
+  transform: translateY(1px);
+}
+
+/* ── Navigation / Sidebar ────────────────────────────────────── */
 .sidebar {
-  width: 260px;
+  width: 280px;
   height: 100vh;
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(20px);
-  border-right: 1px solid var(--glass-border);
+  background: var(--bg-sidebar);
+  color: white;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   z-index: 50;
 }
 
 .main-content {
-  margin-left: 260px;
+  margin-left: 280px;
   padding: 2rem;
-  max-width: 1400px;
+  max-width: 1600px;
 }
 
+/* ── Scrollbar ───────────────────────────────────────────────── */
 .custom-scrollbar::-webkit-scrollbar {
   width: 5px;
+  height: 5px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -91,54 +159,39 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: #c1cad6;
   border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-blue);
+  background: #9aa8b8;
 }
 
-.morphing-card {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-  overflow: hidden;
-  position: relative;
+/* ── Status Badges ───────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
-.morphing-glass {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+.badge-success { background: var(--success-bg); color: var(--success); }
+.badge-warning { background: var(--warning-bg); color: var(--warning); }
+.badge-danger { background: var(--danger-bg); color: var(--danger); }
+.badge-info { background: var(--info-bg); color: var(--info); }
+
+/* ── Animations ──────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.morphing-glass:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 0 40px rgba(14, 165, 233, 0.15), inset 0 0 20px rgba(255, 255, 255, 0.05);
-  transform: translateY(-2px) scale(1.01);
+.animate-fade-in {
+  animation: fade-in 0.25s ease-out forwards;
 }
 
-@keyframes slow-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes reverse-spin {
-  from {
-    transform: rotate(360deg);
-  }
-
-  to {
-    transform: rotate(0deg);
-  }
-}
+/* ── Utility overrides for DynamicStats dark theme ───────────── */
+/* DynamicStats uses dark-themed inline classes; these ensure compat */

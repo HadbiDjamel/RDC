@@ -1,0 +1,7 @@
+# Ignore everything by default
+*
+
+# Allow only compiled dist and Nginx configuration
+!dist
+!dist/**
+!nginx.conf

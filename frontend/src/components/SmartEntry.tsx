@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, User, Stethoscope, Microscope, ClipboardCheck, X, Shield, BookOpen } from 'lucide-react';
+import { Mic, User, Stethoscope, Microscope, ClipboardCheck, X, Shield, BookOpen, ChevronRight, BrainCircuit } from 'lucide-react';
 import VoiceInput from './VoiceInput';
 import PatientForm from './PatientForm';
 import MedicalReference from './MedicalReference';
@@ -28,19 +28,6 @@ const MODULES = {
         { id: 'full', label: 'Validation IARC', icon: Shield, desc: 'Vérification et Finalisation' }
     ]
 };
-
-// Generate organic floating shapes properties
-const blobAnimations = [
-    { borderRadius: ["40% 60% 70% 30% / 40% 50% 60% 50%", "60% 40% 30% 70% / 60% 30% 70% 40%", "40% 60% 70% 30% / 40% 50% 60% 50%"] },
-    { borderRadius: ["50% 50% 40% 60% / 40% 60% 50% 50%", "40% 60% 60% 40% / 60% 40% 40% 60%", "50% 50% 40% 60% / 40% 60% 50% 50%"] },
-    { borderRadius: ["30% 70% 50% 50% / 50% 50% 70% 30%", "70% 30% 50% 50% / 50% 50% 30% 70%", "30% 70% 50% 50% / 50% 50% 70% 30%"] },
-];
-
-const colors = [
-    'from-sky-500/80 to-indigo-600/80',
-    'from-emerald-500/80 to-teal-600/80',
-    'from-violet-500/80 to-fuchsia-600/80',
-];
 
 const SmartEntry: React.FC<SmartEntryProps> = ({ role, initialData }) => {
     const [view, setView] = useState<'hub' | 'voice' | 'form'>('hub');
@@ -85,21 +72,21 @@ const SmartEntry: React.FC<SmartEntryProps> = ({ role, initialData }) => {
 
     if (view === 'form') {
         return (
-            <div className="flex h-full min-h-[80vh] gap-6">
+            <div className="flex h-[85vh] overflow-y-auto custom-scrollbar gap-6 pr-2">
                 <div className={`flex-1 transition-all duration-300 ${showReference ? 'mr-[450px]' : ''}`}>
-                    <div className="relative">
+                    <div className="relative pb-20">
                         <div className="absolute -top-12 left-0 flex items-center gap-4 z-40">
                             <button
                                 onClick={() => setView('hub')}
-                                className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-xs font-bold"
+                                className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors text-xs font-bold"
                             >
                                 <X size={14} /> Annuler
                             </button>
                             <button
                                 onClick={() => setShowReference(!showReference)}
                                 className={`flex items-center gap-2 px-3 py-1 rounded-lg border transition-all text-xs font-bold ${showReference
-                                    ? 'bg-blue-600 border-blue-500 text-white'
-                                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                                    ? 'bg-blue-600 border-blue-500 text-white shadow-md'
+                                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 shadow-sm'
                                     }`}
                             >
                                 <BookOpen size={14} />
@@ -117,14 +104,14 @@ const SmartEntry: React.FC<SmartEntryProps> = ({ role, initialData }) => {
                             animate={{ x: 0 }}
                             exit={{ x: 400 }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed top-0 right-0 w-[450px] h-screen bg-slate-900/95 backdrop-blur-xl shadow-2xl z-50 border-l border-white/10 overflow-hidden flex flex-col"
+                             className="fixed top-0 right-0 w-[450px] h-screen bg-white/95 backdrop-blur-xl shadow-2xl z-50 border-l border-slate-200 overflow-hidden flex flex-col"
                         >
-                            <div className="p-4 border-b border-white/10 bg-slate-900/50 flex justify-between items-center backdrop-blur-md">
-                                <h3 className="font-black text-white flex items-center gap-2">
-                                    <BookOpen size={16} className="text-sky-400" />
+                            <div className="p-4 border-b border-slate-100 bg-white/50 flex justify-between items-center backdrop-blur-md">
+                                <h3 className="font-black text-slate-800 flex items-center gap-2">
+                                    <BookOpen size={16} className="text-blue-600" />
                                     Référentiel Médical
                                 </h3>
-                                <button onClick={() => setShowReference(false)} className="p-1.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors">
+                                <button onClick={() => setShowReference(false)} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-800 transition-colors">
                                     <X size={16} />
                                 </button>
                             </div>
@@ -151,78 +138,82 @@ const SmartEntry: React.FC<SmartEntryProps> = ({ role, initialData }) => {
     }
 
     return (
-        <div className="relative h-full w-full max-w-5xl mx-auto flex flex-col items-center">
-            {/* Header Content */}
-            <div className="text-center mb-12 relative z-20 pointer-events-none">
-                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-16 h-16 bg-sky-500/10 text-sky-400 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                    <Mic size={32} />
+        <div className="relative h-full w-full max-w-6xl mx-auto flex flex-col items-center py-10">
+            {/* Institutional Header */}
+            <div className="text-center mb-16">
+                <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex flex-col items-center">
+                    <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mb-6 shadow-sm border border-blue-100">
+                        <Mic size={40} strokeWidth={1.5} />
+                    </div>
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-center gap-2 text-blue-600 mb-1">
+                            <Shield size={14} strokeWidth={2.5} />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Medical Intelligence Assistant</span>
+                        </div>
+                        <h2 className="text-4xl font-black text-slate-800 tracking-tight">Saisie Intelligente</h2>
+                        <p className="text-slate-500 max-w-xl mx-auto text-sm leading-relaxed font-bold italic">
+                            Environnement de saisie assistée pour le Registre National du Cancer.
+                        </p>
+                    </div>
                 </motion.div>
-                <h2 className="text-3xl font-black text-white mb-3 tracking-tight">Saisie Intelligente</h2>
-                <p className="text-slate-400 max-w-xl mx-auto text-sm leading-relaxed">
-                    Sélectionnez un portail pour configurer votre environnement de saisie. 
-                    Utilisez le <span className="text-sky-400 font-bold">Vocal</span> pour l'extraction automatique via M.I.A. 
-                </p>
             </div>
 
-            {/* Organic Portals Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mt-10">
-                {modules.map((mod, i) => {
-                    const anim = blobAnimations[i % blobAnimations.length];
-                    const color = colors[i % colors.length];
+            {/* Professional Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full px-6">
+                {modules.map((mod, i) => (
+                    <motion.div 
+                        key={mod.id}
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: i * 0.1 }}
+                        className="group bg-white rounded-[32px] border border-slate-200 p-8 shadow-sm hover:shadow-xl hover:border-blue-300 transition-all duration-500 flex flex-col items-center text-center relative overflow-hidden"
+                    >
+                        {/* Static Subtle Accent */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-700" />
+                        
+                        <div className="relative z-10 flex flex-col items-center h-full">
+                            <div className="w-20 h-20 bg-slate-50 text-slate-400 group-hover:bg-blue-600 group-hover:text-white rounded-2xl flex items-center justify-center mb-8 shadow-inner transition-all duration-500">
+                                <mod.icon size={32} strokeWidth={1.5} />
+                            </div>
+                            
+                            <div className="flex-1 space-y-3 mb-10">
+                                <h3 className="text-xl font-black text-slate-800 group-hover:text-blue-900 transition-colors">{mod.label}</h3>
+                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest group-hover:text-blue-600/70 transition-colors">{mod.desc}</p>
+                            </div>
 
-                    return (
-                        <div key={mod.id} className="relative group flex flex-col items-center">
-                            {/* The Morphing Portal */}
-                            <motion.div
-                                className={`w-64 h-64 bg-gradient-to-br ${color} backdrop-blur-3xl border border-white/20 shadow-2xl flex flex-col items-center justify-center relative overflow-hidden`}
-                                animate={{
-                                    borderRadius: anim.borderRadius,
-                                    y: [0, -10, 0],
-                                    rotate: [0, 1, -1, 0]
-                                }}
-                                transition={{
-                                    borderRadius: { duration: 10 + Math.random() * 5, repeat: Infinity, ease: "linear" },
-                                    y: { duration: 4 + Math.random() * 2, repeat: Infinity, ease: "easeInOut" },
-                                    rotate: { duration: 6 + Math.random() * 3, repeat: Infinity, ease: "easeInOut" }
-                                }}
-                            >
-                                <div className="absolute inset-0 bg-black/10 transition-colors duration-500 group-hover:bg-transparent" />
-                                
-                                <div className="relative z-10 text-center flex flex-col items-center gap-4">
-                                    <div className="p-3 bg-white/20 rounded-full shadow-inner backdrop-blur-md border border-white/10">
-                                        <mod.icon size={28} className="text-white drop-shadow-md" />
-                                    </div>
-                                    <div className="px-6">
-                                        <h3 className="text-lg font-black text-white mb-1 drop-shadow-md">{mod.label}</h3>
-                                        <p className="text-[10px] text-white/70 uppercase font-black tracking-widest">{mod.desc}</p>
-                                    </div>
-                                </div>
-
-                                {/* Selection Overlay */}
-                                <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-slate-900/60 backdrop-blur-md z-20">
-                                    <div className="flex flex-col gap-3 w-40">
-                                        <button 
-                                            onClick={() => startManual(mod.id)}
-                                            className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl text-white font-bold text-xs transition-all"
-                                        >
-                                            Saisie Manuelle
-                                        </button>
-                                        <button 
-                                            onClick={() => startVoice(mod.id)}
-                                            className="px-4 py-2 bg-sky-500 hover:bg-sky-400 rounded-xl text-white font-bold text-xs shadow-lg shadow-sky-500/30 transition-all flex items-center justify-center gap-2"
-                                        >
-                                            <Mic size={14} /> Saisie Vocale
-                                        </button>
-                                    </div>
-                                </div>
-                            </motion.div>
+                            <div className="w-full flex flex-col gap-3">
+                                <button 
+                                    onClick={() => startVoice(mod.id)}
+                                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5"
+                                >
+                                    <Mic size={16} /> Lancer le Vocal
+                                </button>
+                                <button 
+                                    onClick={() => startManual(mod.id)}
+                                    className="w-full py-4 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 transition-all"
+                                >
+                                    Saisie Manuelle <ChevronRight size={14} />
+                                </button>
+                            </div>
                         </div>
-                    );
-                })}
+                    </motion.div>
+                ))}
+            </div>
+
+            {/* Info Footer */}
+            <div className="mt-20 flex items-center gap-6 px-10 py-6 bg-slate-50 rounded-full border border-slate-100">
+                <div className="flex items-center gap-2 text-slate-400">
+                    <Shield size={16} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Sécurisé</span>
+                </div>
+                <div className="w-px h-4 bg-slate-200" />
+                <div className="flex items-center gap-2 text-slate-400">
+                    <BrainCircuit size={16} className="text-blue-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">M.I.A. Core Active</span>
+                </div>
             </div>
         </div>
     );
 };
-
 
 export default SmartEntry;

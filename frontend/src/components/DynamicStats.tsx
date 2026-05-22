@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     BarChart, Bar, LineChart, Line, AreaChart, Area,
@@ -17,8 +18,11 @@ import {
     ChevronRight, ChevronDown,
     ArrowUpRight, ArrowDownRight,
     Minus, AlertCircle, FileText,
-    ShieldCheck, Activity as ActivityIcon
+    ShieldCheck, Activity as ActivityIcon,
+    Circle, MousePointer2
 } from 'lucide-react';
+import { WILAYA_CENTROIDS } from '../utils/geoConstants';
+import { isPointInAnyPolygon } from '../utils/geoUtils';
 
 // ── Types ────────────────────────────────────────────────────────
 type ChartType = 'bar' | 'stacked-bar' | 'line' | 'area' | 'pie' | 'radar' | 'pyramid' | 'heatmap';
@@ -74,12 +78,12 @@ const CHART_ICONS: Record<ChartType, any> = {
 };
 
 const DashboardMiniChart = ({ title, children, icon: Icon }: any) => (
-    <div className="glass-card p-4 flex flex-col gap-3 min-h-[240px]">
-        <div className="flex items-center justify-between border-b border-white/5 pb-2">
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <Icon size={12} className="text-sky-400" /> {title}
+    <div className="portal-card p-5 flex flex-col gap-4 min-h-[280px]">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                <Icon size={14} className="text-blue-600" /> {title}
             </h4>
-            <Maximize2 size={12} className="text-slate-600 hover:text-white cursor-pointer transition-colors" />
+            <Maximize2 size={14} className="text-slate-300 hover:text-blue-600 cursor-pointer transition-colors" />
         </div>
         <div className="flex-1 min-h-0">
             {children}
@@ -88,35 +92,36 @@ const DashboardMiniChart = ({ title, children, icon: Icon }: any) => (
 );
 
 const IndicatorCard = ({ label, value, trend, subtext, color, icon }: any) => (
-    <div className="glass-card p-4 relative overflow-hidden group">
-        <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity text-${color}-400`}>
+    <div className="portal-card p-5 relative overflow-hidden group">
+        <div className={`absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity text-slate-900`}>
             {icon}
         </div>
         <div className="relative z-10">
-            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">{label}</span>
-            <div className="flex items-end gap-3">
-                <span className={`text-2xl font-black text-white`}>{value}</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">{label}</span>
+            <div className="flex items-center gap-3">
+                <span className="text-3xl font-extrabold text-slate-900">{value}</span>
                 {trend && (
-                    <div className={`flex items-center gap-0.5 mb-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold ${trend === 'up' ? 'bg-emerald-500/10 text-emerald-400' :
-                        trend === 'down' ? 'bg-rose-500/10 text-rose-400' :
-                            'bg-slate-500/10 text-slate-400'
+                    <div className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${trend === 'up' ? 'bg-emerald-50 text-emerald-600' :
+                        trend === 'down' ? 'bg-rose-50 text-rose-600' :
+                            'bg-slate-50 text-slate-500'
                         }`}>
-                        {trend === 'up' ? <ArrowUpRight size={10} /> : trend === 'down' ? <ArrowDownRight size={10} /> : <Minus size={10} />}
+                        {trend === 'up' ? <ArrowUpRight size={12} /> : trend === 'down' ? <ArrowDownRight size={12} /> : <Minus size={12} />}
+                        {trend === 'up' ? 'Croissance' : trend === 'down' ? 'Baisse' : 'Stable'}
                     </div>
                 )}
             </div>
-            <p className="text-[10px] text-slate-500 mt-2 font-medium">{subtext}</p>
+            <p className="text-xs text-slate-500 mt-2 font-medium">{subtext}</p>
         </div>
     </div>
 );
 
 const ReportMethodology = () => (
-    <div className="mt-4 p-4 bg-slate-900/30 border border-white/5 rounded-xl">
-        <h5 className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2 mb-2">
-            <FileText size={12} className="text-sky-400" /> Note sur la Méthodologie
+    <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+        <h5 className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-2 mb-2">
+            <FileText size={12} className="text-[#1d6fb5]" /> Note sur la Méthodologie
         </h5>
         <p className="text-[10px] text-slate-500 leading-relaxed italic">
-            Les taux standardisés (ASR) sont calculés sur la base de la <strong className="text-slate-400">Population Mondiale Standard (Segi 1960)</strong>.
+            Les taux standardisés (ASR) sont calculés sur la base de la <strong className="text-slate-700">Population Mondiale Standard (Segi 1960)</strong>.
             Les intervalles de confiance à 95% sont dérivés par approximation de l'erreur standard (SE).
             La complétude est estimée via des sources croisées (Anapath, Clinique, DCO).
         </p>
@@ -129,25 +134,25 @@ const FilterSection = ({ label, options, selected, onSelect, icon }: any) => {
         <div className="space-y-2">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between text-[10px] font-bold text-slate-300 hover:text-white transition-colors"
+                className="w-full flex items-center justify-between text-[11px] font-bold text-slate-600 hover:text-blue-600 transition-colors py-1"
             >
                 <div className="flex items-center gap-2">
-                    <span className="text-sky-500">{icon}</span>
+                    <span className="text-blue-600">{icon}</span>
                     {label}
                 </div>
-                {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </button>
             {isOpen && (
-                <div className="flex flex-wrap gap-1.5 pl-5">
+                <div className="flex flex-wrap gap-2 pl-6">
                     {options.map((opt: string) => {
                         const isSelected = selected.includes(opt);
                         return (
                             <button
                                 key={opt}
                                 onClick={() => onSelect(opt)}
-                                className={`px-2 py-1 rounded-md text-[9px] font-bold transition-all border ${isSelected
-                                    ? 'bg-sky-500 text-white border-sky-500 shadow-sm'
-                                    : 'bg-white/5 text-slate-500 border-white/5 hover:text-slate-300'
+                                className={`px-3 py-1 rounded-md text-[10px] font-semibold transition-all border ${isSelected
+                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                                     }`}
                             >
                                 {opt}
@@ -161,16 +166,16 @@ const FilterSection = ({ label, options, selected, onSelect, icon }: any) => {
 };
 
 const SmallStat = ({ label, value, color }: any) => (
-    <div className={`px-3 py-2 rounded-xl bg-${color}-500/5 border border-${color}-500/10`}>
-        <span className="text-[8px] font-black uppercase tracking-widest text-slate-600 block leading-tight">{label}</span>
-        <span className={`text-[11px] font-black text-${color}-400`}>{value}</span>
+    <div className={`px-3 py-2 rounded-xl bg-${color}-50 border border-${color}-100`}>
+        <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 block leading-tight">{label}</span>
+        <span className={`text-[11px] font-black text-${color}-600`}>{value}</span>
     </div>
 );
 
 const PresetBtn = ({ label, onClick, color }: any) => (
     <button
         onClick={onClick}
-        className={`w-full px-3 py-2.5 bg-${color}-500/10 border border-${color}-500/10 hover:border-${color}-500/30 text-${color}-400 text-[10px] font-bold rounded-xl transition-all flex items-center justify-between group`}
+        className={`w-full px-3 py-2.5 bg-${color}-50 border border-${color}-100 hover:border-${color}-300 text-${color}-700 text-[10px] font-bold rounded-xl transition-all flex items-center justify-between group`}
     >
         {label}
         <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity translate-x-1" />
@@ -181,8 +186,8 @@ const MeasureBtnSm = ({ active, label, onClick }: any) => (
     <button
         onClick={onClick}
         className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${active
-            ? 'bg-sky-500 text-white shadow-sm'
-            : 'text-slate-500 hover:text-slate-300'
+            ? 'bg-[#1e3a5f] text-white shadow-sm'
+            : 'text-slate-500 hover:text-slate-800'
             }`}
     >
         {label}
@@ -197,21 +202,25 @@ const CustomTooltip = ({ active, payload, label, measure }: any) => {
                     measure === 'cumulative' ? '%' :
                         measure === 'truncated' ? '/100k (35-64)' : '/100k';
         return (
-            <div className="bg-slate-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md">
-                <p className="text-[10px] text-slate-500 font-black uppercase mb-2">{label}</p>
-                <div className="space-y-1.5">
+            <div className="bg-white border border-slate-200 p-4 rounded-lg shadow-xl ring-1 ring-black/5">
+                <p className="text-[10px] text-slate-500 font-bold uppercase mb-3 border-b border-slate-50 pb-2">{label}</p>
+                <div className="space-y-2">
                     {payload.map((p: any, i: number) => (
-                        <div key={i} className="flex items-center gap-3">
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color || p.fill }}></div>
-                            <p className="text-xs font-bold text-white whitespace-nowrap">
-                                <span className="text-slate-400 mr-2">{p.name || 'Mesure'}:</span>
-                                {Math.abs(p.value).toLocaleString()} {measureSuffix}
+                        <div key={i} className="flex items-center justify-between gap-6">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: p.color || p.fill }}></div>
+                                <span className="text-xs font-medium text-slate-600">{p.name || 'Mesure'}:</span>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs font-bold text-slate-900">
+                                    {Math.abs(p.value).toLocaleString()} {measureSuffix}
+                                </p>
                                 {p.payload?.low !== undefined && (
-                                    <span className="text-[9px] text-slate-500 ml-2 block italic">
+                                    <p className="text-[9px] text-slate-400 italic">
                                         IC95%: [{p.payload.low} - {p.payload.high}]
-                                    </span>
+                                    </p>
                                 )}
-                            </p>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -237,6 +246,9 @@ const DynamicStats: React.FC = () => {
 
     const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(true);
     const [registryData, setRegistryData] = useState<any[]>([]);
+    const [personalizedMaps, setPersonalizedMaps] = useState<any[]>([]);
+    const [selectedMapId, setSelectedMapId] = useState<string>('national');
+    const [selectedZoneId, setSelectedZoneId] = useState<string>('all');
     const [loading, setLoading] = useState(true);
 
     if (loading) {
@@ -260,11 +272,21 @@ const DynamicStats: React.FC = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [patientsRes, icdo3Res] = await Promise.all([
+                const [patientsRes, icdo3Res, mapsRes] = await Promise.all([
                     axios.get('patients/'),
-                    axios.get('icdo3/')
+                    axios.get('icdo3/'),
+                    axios.get('personalized-maps/')
                 ]);
-                
+
+                const migratedMaps = (mapsRes.data || []).map((m: any) => ({
+                    ...m,
+                    zones: (m.zones || []).map((z: any) => ({
+                        ...z,
+                        polygons: z.polygons || (z.points ? [z.points] : [])
+                    }))
+                }));
+                setPersonalizedMaps(migratedMaps);
+
                 const icdo3Dict = (icdo3Res.data || []).reduce((acc: any, curr: any) => {
                     acc[curr.code] = curr.description_fr;
                     return acc;
@@ -275,12 +297,12 @@ const DynamicStats: React.FC = () => {
                     const genderStr = p.gender === 1 ? 'M' : 'F';
                     const city = p.wilaya_name || 'Inconnu';
                     const ageGroup = getAgeGroup(p.birth_date);
-                    
+
                     if (p.tumors && p.tumors.length > 0) {
                         p.tumors.forEach((t: any) => {
                             const topo = t.topo_code || 'Inconnu';
                             const morpho = t.morpho_code || 'Inconnu';
-                            let year = 2024;
+                            let year = 2026;
                             if (t.incidence_date) {
                                 if (t.incidence_date.includes('-')) year = parseInt(t.incidence_date.split('-')[0]);
                                 else year = parseInt(t.incidence_date.split('/').pop());
@@ -294,7 +316,9 @@ const DynamicStats: React.FC = () => {
                                 topography: icdo3Dict[topo] || topo,
                                 morphology: icdo3Dict[morpho] || morpho,
                                 year: year,
-                                basis: t.basis_of_diagnosis === '1' ? 'Histologie' : t.basis_of_diagnosis === '7' ? 'Cytologie' : 'Clinique'
+                                basis: t.basis_of_diagnosis === '1' ? 'Histologie' : t.basis_of_diagnosis === '7' ? 'Cytologie' : 'Clinique',
+                                lat: WILAYA_CENTROIDS[String(p.wilaya).padStart(2, '0')]?.lat || 0,
+                                lng: WILAYA_CENTROIDS[String(p.wilaya).padStart(2, '0')]?.lng || 0
                             });
                         });
                     }
@@ -313,11 +337,11 @@ const DynamicStats: React.FC = () => {
         const cities = new Set<string>();
         const topos = new Set<string>();
         const years = new Set<string>();
-        
+
         registryData.forEach(d => {
-             if (d.city) cities.add(d.city);
-             if (d.topography) topos.add(d.topography);
-             if (d.year) years.add(String(d.year));
+            if (d.city) cities.add(d.city);
+            if (d.topography) topos.add(d.topography);
+            if (d.year) years.add(String(d.year));
         });
 
         return {
@@ -388,7 +412,7 @@ const DynamicStats: React.FC = () => {
 
     // ── Helper: YoY Calculation ──────────────────────────────────
     const yoyStats = useMemo(() => {
-        const currentYear = 2024;
+        const currentYear = 2026;
         const lastYear = 2023;
         const curr = registryData.filter(d => d.year === currentYear).length;
         const prev = registryData.filter(d => d.year === lastYear).length;
@@ -403,8 +427,32 @@ const DynamicStats: React.FC = () => {
 
     // ── Data Transformation Logic ───────────────────────────────
     const chartData = useMemo(() => {
-        // 1. Filter raw data
-        const filtered = registryData.filter(item => {
+        const filteredByTerritory = registryData.filter(item => {
+            if (selectedMapId === 'national') return true;
+            const selectedMap = personalizedMaps.find(m => String(m.id) === selectedMapId);
+            if (!selectedMap) return true;
+
+            // 1. If a specific zone is selected, use polygon intersection
+            if (selectedZoneId !== 'all') {
+                const zone = selectedMap.zones?.find((z: any) => String(z.id) === selectedZoneId);
+                if (zone && zone.polygons) {
+                    return isPointInAnyPolygon([item.lat, item.lng], zone.polygons);
+                }
+            }
+
+            // 2. If 'all' is selected but the map has zones, check if in ANY zone
+            if (selectedZoneId === 'all' && (selectedMap.zones || []).length > 0) {
+                const anyMatch = selectedMap.zones.some((z: any) =>
+                    z.polygons && isPointInAnyPolygon([item.lat, item.lng], z.polygons)
+                );
+                if (anyMatch) return true;
+            }
+
+            // 3. Fallback: check if the wilaya name is in the map's wilayas list
+            return (selectedMap.wilaya_names || []).includes(item.city);
+        });
+
+        const filtered = filteredByTerritory.filter(item => {
             return Object.entries(config.filters).every(([dim, allowed]) => {
                 if (!allowed || allowed.length === 0) return true;
                 return allowed.includes(String(item[dim as Dimension]));
@@ -490,7 +538,7 @@ const DynamicStats: React.FC = () => {
                 return sumB - sumA;
             });
         }
-    }, [config.dimension, config.breakdown, config.measure, config.filters, config.chartType]);
+    }, [config.dimension, config.breakdown, config.measure, config.filters, config.chartType, selectedMapId, selectedZoneId, personalizedMaps]);
 
     const breakdownKeys = useMemo(() => {
         if (config.breakdown === 'none' || !chartData.length || !chartData[0]) return [];
@@ -550,7 +598,7 @@ const DynamicStats: React.FC = () => {
             {/* Middle Row: Quad-Charts Hub */}
             <div className="grid grid-cols-2 gap-6">
                 <DashboardMiniChart title="Top 5 Sites Primaires" icon={TrendingUp}>
-                    <ResponsiveContainer width="100%" height={200}>
+                    <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData.slice(0, 5)}>
                             <XAxis dataKey="name" stroke="#64748b" fontSize={8} interval={0} />
                             <YAxis hide />
@@ -563,7 +611,7 @@ const DynamicStats: React.FC = () => {
                 </DashboardMiniChart>
 
                 <DashboardMiniChart title="Distribution par Sexe" icon={UsersIcon}>
-                    <ResponsiveContainer width="100%" height={200}>
+                    <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
                                 data={registryData.reduce((acc: any[], curr) => {
@@ -587,7 +635,7 @@ const DynamicStats: React.FC = () => {
                 </DashboardMiniChart>
 
                 <DashboardMiniChart title="Incidence par Wilaya" icon={MapPin}>
-                    <ResponsiveContainer width="100%" height={200}>
+                    <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData.filter(d => ['Alger', 'Oran', 'Constantine'].includes(d.name))} layout="vertical">
                             <XAxis type="number" hide />
                             <YAxis type="category" dataKey="name" stroke="#64748b" fontSize={8} width={60} />
@@ -598,19 +646,28 @@ const DynamicStats: React.FC = () => {
                 </DashboardMiniChart>
 
                 <DashboardMiniChart title="Évolution Temporelle" icon={Activity}>
-                    <ResponsiveContainer width="100%" height={200}>
-                        <AreaChart data={[{ year: 2022, val: 2 }, { year: 2023, val: 12 }, { year: 2024, val: 5 }]}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                            <XAxis dataKey="year" stroke="#64748b" fontSize={8} />
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={[{ year: 2022, val: 2 }, { year: 2023, val: 12 }, { year: 2026, val: 5 }]}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                            <XAxis dataKey="year" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
                             <YAxis hide />
-                            <Tooltip />
-                            <Area type="monotone" dataKey="val" stroke="#10b981" fill="#10b981" fillOpacity={0.1} strokeWidth={2} />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Area type="monotone" dataKey="val" stroke="#2563eb" fill="#3b82f6" fillOpacity={0.1} strokeWidth={2} />
                         </AreaChart>
                     </ResponsiveContainer>
                 </DashboardMiniChart>
             </div>
 
-            <ReportMethodology />
+            <div className="portal-card p-5 bg-slate-50 border-slate-200">
+                <h5 className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-2 mb-3">
+                    <FileText size={14} className="text-blue-600" /> Note sur la Méthodologie
+                </h5>
+                <p className="text-xs text-slate-500 leading-relaxed italic">
+                    Les taux standardisés (ASR) sont calculés sur la base de la <strong className="text-slate-700">Population Mondiale Standard (Segi 1960)</strong>.
+                    Les intervalles de confiance à 95% sont dérivés par approximation de l'erreur standard (SE).
+                    La complétude est estimée via des sources croisées (Anapath, Clinique, DCO).
+                </p>
+            </div>
         </div>
     );
 
@@ -624,10 +681,10 @@ const DynamicStats: React.FC = () => {
             case 'bar':
                 return (
                     <BarChart {...CommonProps}>
-                        {config.showGrid && <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />}
+                        {config.showGrid && <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />}
                         <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
                         <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
                         {config.showLegend && <Legend verticalAlign="top" height={36} iconType="circle" />}
                         {config.breakdown === 'none' ? (
                             <Bar dataKey="display" radius={[4, 4, 0, 0]} isAnimationActive={config.animate}>
@@ -643,7 +700,7 @@ const DynamicStats: React.FC = () => {
             case 'stacked-bar':
                 return (
                     <BarChart {...CommonProps}>
-                        {config.showGrid && <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />}
+                        {config.showGrid && <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />}
                         <XAxis dataKey="name" stroke="#64748b" fontSize={10} />
                         <YAxis stroke="#64748b" fontSize={10} />
                         <Tooltip content={<CustomTooltip measure={config.measure} />} />
@@ -656,13 +713,13 @@ const DynamicStats: React.FC = () => {
             case 'line':
                 return (
                     <LineChart {...CommonProps}>
-                        {config.showGrid && <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />}
+                        {config.showGrid && <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />}
                         <XAxis dataKey="name" stroke="#64748b" fontSize={10} />
                         <YAxis stroke="#64748b" fontSize={10} />
                         <Tooltip content={<CustomTooltip measure={config.measure} />} />
                         {config.showLegend && <Legend verticalAlign="top" height={36} iconType="circle" />}
                         {config.breakdown === 'none' ? (
-                            <Line type="monotone" dataKey="display" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 4, fill: '#0ea5e9', strokeWidth: 2, stroke: '#030712' }} isAnimationActive={config.animate} />
+                            <Line type="monotone" dataKey="display" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 4, fill: '#0ea5e9', strokeWidth: 2, stroke: '#fff' }} isAnimationActive={config.animate} />
                         ) : (
                             breakdownKeys.map((bk, i) => (
                                 <Line key={bk} type="monotone" dataKey={bk} name={bk} stroke={COLORS[i % COLORS.length]} strokeWidth={2} dot={{ r: 3 }} isAnimationActive={config.animate} />
@@ -673,7 +730,7 @@ const DynamicStats: React.FC = () => {
             case 'area':
                 return (
                     <AreaChart {...CommonProps}>
-                        {config.showGrid && <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />}
+                        {config.showGrid && <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />}
                         <XAxis dataKey="name" stroke="#64748b" fontSize={10} />
                         <YAxis stroke="#64748b" fontSize={10} />
                         <Tooltip content={<CustomTooltip measure={config.measure} />} />
@@ -698,10 +755,10 @@ const DynamicStats: React.FC = () => {
             case 'pyramid':
                 return (
                     <BarChart {...CommonProps} layout="vertical" stackOffset="sign">
-                        {config.showGrid && <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />}
+                        {config.showGrid && <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />}
                         <XAxis type="number" stroke="#64748b" fontSize={10} tickFormatter={(v) => Math.abs(v).toString()} />
                         <YAxis type="category" dataKey="name" stroke="#64748b" fontSize={10} width={60} />
-                        <Tooltip content={<CustomTooltip measure={config.measure} />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                        <Tooltip content={<CustomTooltip measure={config.measure} />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
                         {config.showLegend && <Legend verticalAlign="top" height={36} iconType="circle" />}
                         {breakdownKeys.map((bk, i) => (
                             <Bar
@@ -740,7 +797,7 @@ const DynamicStats: React.FC = () => {
             case 'radar':
                 return (
                     <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
-                        <PolarGrid stroke="rgba(255,255,255,0.05)" />
+                        <PolarGrid stroke="rgba(0,0,0,0.05)" />
                         <PolarAngleAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} />
                         <PolarRadiusAxis stroke="#64748b" tick={{ fontSize: 8 }} />
                         {config.breakdown === 'none' ? (
@@ -759,23 +816,23 @@ const DynamicStats: React.FC = () => {
                 return (
                     <div className="w-full h-full overflow-auto flex flex-col items-center justify-center">
                         <div className="glass-card p-4 inline-block min-w-full">
-                            <table className="w-full text-center border-collapse text-[10px] text-slate-400">
+                            <table className="w-full text-center border-collapse text-[10px] text-slate-500">
                                 <thead>
                                     <tr>
-                                        <th className="p-3 border border-white/5 bg-slate-800/50 text-sky-400 font-bold">DIMENSION</th>
-                                        {allBreakdowns.map(bk => <th key={bk} className="p-3 border border-white/5 bg-slate-800/50 text-slate-300 font-bold">{bk}</th>)}
+                                        <th className="p-3 border border-slate-200 bg-slate-50 text-[#1d6fb5] font-bold">DIMENSION</th>
+                                        {allBreakdowns.map(bk => <th key={bk} className="p-3 border border-slate-200 bg-slate-50 text-slate-600 font-bold">{bk}</th>)}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {chartData.map(row => (
-                                        <tr key={row.name} className="hover:bg-white/5 transition-colors">
-                                            <td className="p-3 border border-white/5 bg-slate-800/30 font-bold text-slate-300 text-left">{row.name}</td>
+                                        <tr key={row.name} className="hover:bg-slate-50 transition-colors">
+                                            <td className="p-3 border border-slate-200 bg-slate-50/50 font-bold text-slate-700 text-left">{row.name}</td>
                                             {allBreakdowns.map(bk => {
                                                 const val = Math.abs(row[bk] || 0);
                                                 const maxVal = Math.max(...chartData.map(r => Math.max(...allBreakdowns.map(b => Math.abs(r[b] || 0)))));
                                                 const intensity = val / (maxVal || 1);
                                                 return (
-                                                    <td key={bk} className="p-3 border border-white/5 font-mono text-xs" style={{ backgroundColor: `rgba(14, 165, 233, ${0.05 + intensity * 0.6})`, color: intensity > 0.5 ? '#fff' : '#64748b' }}>
+                                                    <td key={bk} className="p-3 border border-slate-200 font-mono text-xs" style={{ backgroundColor: `rgba(29, 111, 181, ${0.05 + intensity * 0.4})`, color: intensity > 0.6 ? '#fff' : '#1e3a5f' }}>
                                                         {val}
                                                     </td>
                                                 );
@@ -810,46 +867,103 @@ const DynamicStats: React.FC = () => {
     };
 
     return (
-        <div className="h-full flex flex-col gap-6 overflow-hidden">
+        <div className="h-full flex flex-col gap-2 overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between pb-2 shrink-0">
-                <div>
-                    <h2 className="text-2xl font-black text-white flex items-center gap-3">
-                        <div className="p-2 bg-sky-500/10 rounded-xl text-sky-400">
-                            <TrendingUp size={24} />
-                        </div>
-                        DzCancer Analytics Studio
-                    </h2>
-                    <p className="text-xs text-slate-500 mt-1 ml-12 font-medium">Plateforme d'Analyse Épidémiologique Professionnelle</p>
+            <div className="flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                    <div className="p-1.5 bg-blue-50 rounded-lg text-[#1d6fb5]">
+                        <TrendingUp size={18} />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-800">DzCancer Analytics Studio</h2>
+                        <p className="text-[10px] text-slate-500 font-medium">Plateforme d'Analyse Épidémiologique</p>
+                    </div>
                 </div>
                 <div className="flex gap-2">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/5 hover:bg-white/10 rounded-xl text-xs font-bold text-slate-400 transition-all">
-                        <Download size={14} /> Exporter Rapport
+                    <button className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 border border-slate-200 hover:bg-slate-200 rounded-lg text-[11px] font-bold text-slate-600 transition-all">
+                        <Download size={12} /> Exporter
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-400 rounded-xl text-xs font-bold text-white shadow-lg shadow-sky-500/20 transition-all">
-                        <Share2 size={14} /> Publier Tableau
+                    <button className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1e3a5f] hover:bg-[#2a5a8f] rounded-lg text-[11px] font-bold text-white shadow-sm transition-all">
+                        <Share2 size={12} /> Publier
                     </button>
                 </div>
             </div>
 
-            <div className="flex-1 flex gap-6 min-h-0 min-w-0">
+            <div className="flex-1 flex gap-3 min-h-0 min-w-0">
                 {/* ── Control Console (LEFT) ─────────────────────────── */}
-                <div className={`flex flex-col gap-4 transition-all duration-300 ${isFilterPanelOpen ? 'w-[280px]' : 'w-0 overflow-hidden opacity-0'}`}>
-                    <div className="glass-card p-5 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
+                <div className={`flex flex-col gap-2 transition-all duration-300 ${isFilterPanelOpen ? 'w-[240px]' : 'w-0 overflow-hidden opacity-0'}`}>
+                    <div className="glass-card p-3 space-y-4 flex-1 overflow-y-auto custom-scrollbar">
                         {/* Dimensional Filters */}
                         <div>
                             <div className="flex items-center justify-between mb-4">
-                                <label className="text-[10px] uppercase font-black text-sky-400 flex items-center gap-2">
+                                <label className="text-[10px] uppercase font-black text-[#1d6fb5] flex items-center gap-2">
                                     <Filter size={12} /> Filtres Avancés
                                 </label>
-                                <button onClick={clearFilters} className="text-[9px] text-slate-500 hover:text-white transition-colors uppercase font-bold">Réinitialiser</button>
+                                <button onClick={clearFilters} className="text-[9px] text-slate-400 hover:text-red-500 transition-colors uppercase font-bold">Réinitialiser</button>
+                            </div>
+
+                            {/* Territory / Map Filter */}
+                            <div className="space-y-3 mb-6 pb-6 border-b border-white/5">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                    <MapPin size={12} className="text-[#1d6fb5]" /> Périmètre Géographique
+                                </label>
+                                <div className="space-y-2">
+                                    <select
+                                        value={selectedMapId}
+                                        onChange={(e) => {
+                                            setSelectedMapId(e.target.value);
+                                            setSelectedZoneId('all');
+                                        }}
+                                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 font-bold focus:outline-none focus:border-[#1d6fb5]"
+                                    >
+                                        <option value="national" className="bg-white">National (Tout)</option>
+                                        <optgroup label="Mes Cartes Personnalisées" className="bg-white">
+                                            {personalizedMaps.map(m => (
+                                                <option key={m.id} value={String(m.id)} className="bg-white">{m.name}</option>
+                                            ))}
+                                        </optgroup>
+                                    </select>
+
+                                    {selectedMapId !== 'national' && (
+                                        <AnimatePresence>
+                                            <motion.div
+                                                initial={{ opacity: 0, y: -5 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="space-y-2 pl-2 border-l-2 border-sky-500/20"
+                                            >
+                                                <label className="text-[9px] font-bold text-slate-400 uppercase flex items-center gap-2">
+                                                    <MousePointer2 size={10} /> Zones de la carte
+                                                </label>
+                                                <div className="flex flex-col gap-1">
+                                                    <button
+                                                        onClick={() => setSelectedZoneId('all')}
+                                                        className={`px-3 py-2 rounded-lg text-[10px] font-bold text-left transition-all ${selectedZoneId === 'all' ? 'bg-blue-50 text-[#1d6fb5] border border-blue-200' : 'text-slate-500 hover:bg-slate-50'}`}
+                                                    >
+                                                        Toutes les wilayas de la carte
+                                                    </button>
+                                                    {personalizedMaps.find(m => String(m.id) === selectedMapId)?.zones?.map((z: any) => (
+                                                        <button
+                                                            key={z.id}
+                                                            onClick={() => setSelectedZoneId(String(z.id))}
+                                                            className={`px-3 py-2 rounded-lg text-[10px] font-bold text-left transition-all flex items-center gap-2 ${selectedZoneId === String(z.id) ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'text-slate-500 hover:bg-slate-50'}`}
+                                                        >
+                                                            <Circle size={8} fill={z.color || '#fff'} stroke="none" />
+                                                            {z.name}
+                                                            <span className="ml-auto opacity-40 text-[8px]">Auto-détection</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </motion.div>
+                                        </AnimatePresence>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="space-y-4">
                                 <FilterSection
                                     label="Année"
                                     icon={<Calendar size={12} />}
-                                    options={filterOptions.years.length ? filterOptions.years : ['2023', '2024']}
+                                    options={filterOptions.years.length ? filterOptions.years : ['2023', '2026']}
                                     selected={config.filters.year || []}
                                     onSelect={(v: string) => toggleFilter('year', v)}
                                 />
@@ -879,7 +993,7 @@ const DynamicStats: React.FC = () => {
 
                         {/* Presets */}
                         <div className="pt-4 border-t border-white/5">
-                            <label className="text-[10px] uppercase font-black text-rose-400 mb-3 block">Modèles DzCancer</label>
+                            <label className="text-[10px] uppercase font-black text-[#1e3a5f] mb-3 block">Modèles DzCancer</label>
                             <div className="grid grid-cols-1 gap-2">
                                 <PresetBtn onClick={() => handlePreset('pyramid')} label="Pyramide des Âges" color="rose" />
                                 <PresetBtn onClick={() => handlePreset('trends')} label="Analyse ASR / Temps" color="sky" />
@@ -890,38 +1004,31 @@ const DynamicStats: React.FC = () => {
                     </div>
                 </div>
 
-                {/* ── Main Panel (RIGHT/CENTER) ──────────────────────── */}
-                <div className="flex-1 flex flex-col gap-6 min-w-0">
+                {/* ── Main Visualization Panel (RIGHT) ───────────── */}
+                <div className="flex-1 flex flex-col gap-2 min-w-0">
                     {/* Toolbar */}
                     <div className="glass-card p-2 flex items-center justify-between shrink-0">
                         <div className="flex items-center gap-4">
-                            <button
-                                onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
-                                className={`p-2 rounded-lg transition-all ${isFilterPanelOpen ? 'bg-sky-500/10 text-sky-400' : 'text-slate-500 hover:text-white'}`}
-                            >
-                                <Filter size={18} />
-                            </button>
-                            <div className="h-6 w-[1px] bg-white/5"></div>
-                            <div className="flex p-1 bg-slate-900/50 rounded-lg border border-white/5">
-                                {(Object.keys(CHART_ICONS) as ChartType[]).map(type => (
+                            <div className="flex p-1 bg-slate-100 rounded-lg border border-slate-200 gap-0.5">
+                                {(Object.keys(CHART_ICONS) as ChartType[]).map((type) => (
                                     <button
                                         key={type}
                                         onClick={() => setConfig(prev => ({ ...prev, chartType: type, viewMode: 'chart' }))}
                                         className={`p-1.5 rounded-md transition-all ${config.chartType === type && config.viewMode === 'chart'
-                                            ? 'bg-sky-500 text-white shadow-lg'
-                                            : 'text-slate-500 hover:text-slate-300'
+                                            ? 'bg-[#1e3a5f] text-white shadow-sm'
+                                            : 'text-slate-400 hover:text-slate-700'
                                             }`}
                                         title={type.toUpperCase()}
                                     >
                                         {React.createElement(CHART_ICONS[type], { size: 16 })}
                                     </button>
                                 ))}
-                                <div className="mx-1 h-5 w-[1px] bg-white/5 self-center"></div>
+                                <div className="mx-1 h-5 w-[1px] bg-slate-200 self-center"></div>
                                 <button
                                     onClick={() => setConfig(prev => ({ ...prev, viewMode: 'table' }))}
                                     className={`p-1.5 rounded-md transition-all ${config.viewMode === 'table'
-                                        ? 'bg-sky-500 text-white shadow-lg'
-                                        : 'text-slate-500 hover:text-slate-300'
+                                        ? 'bg-[#1e3a5f] text-white shadow-sm'
+                                        : 'text-slate-400 hover:text-slate-700'
                                         }`}
                                     title="TABLEAU DE DONNÉES"
                                 >
@@ -931,12 +1038,12 @@ const DynamicStats: React.FC = () => {
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <div className="flex p-1 bg-slate-900/50 rounded-lg border border-white/5">
+                            <div className="flex p-1 bg-slate-100 rounded-lg border border-slate-200">
                                 <button
                                     onClick={() => setConfig(prev => ({ ...prev, viewMode: 'dashboard' }))}
                                     className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${config.viewMode === 'dashboard'
-                                        ? 'bg-emerald-500 text-white shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-300'
+                                        ? 'bg-[#0d7a3e] text-white shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
                                         }`}
                                 >
                                     DASHBOARD
@@ -944,8 +1051,8 @@ const DynamicStats: React.FC = () => {
                                 <button
                                     onClick={() => setConfig(prev => ({ ...prev, viewMode: 'report' }))}
                                     className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${config.viewMode === 'report'
-                                        ? 'bg-rose-500 text-white shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-300'
+                                        ? 'bg-[#c0392b] text-white shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
                                         }`}
                                 >
                                     RAPPORT
@@ -964,17 +1071,17 @@ const DynamicStats: React.FC = () => {
 
                     {/* Stage Panel */}
                     <div className="glass-card flex-1 min-h-0 flex flex-col relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-br from-sky-500/5 via-transparent to-transparent pointer-events-none"></div>
+                        <div className="absolute inset-0 pointer-events-none"></div>
 
-                        <div className="p-8 flex-1 flex flex-col relative z-10 min-h-0">
+                        <div className="p-4 flex-1 flex flex-col relative z-10 min-h-0">
                             {/* Panel Header */}
-                            <div className="flex items-start justify-between mb-8 shrink-0">
+                            <div className="flex items-start justify-between mb-2 shrink-0">
                                 <div>
                                     <div className="flex items-center gap-3">
-                                        <h3 className="text-xl font-bold text-white capitalize tracking-tight">
+                                        <h3 className="text-sm font-bold text-slate-800 capitalize tracking-tight">
                                             {config.viewMode === 'table' ? 'Explorateur de Données' : config.chartType.replace('-', ' ')}
                                         </h3>
-                                        <div className="px-2 py-0.5 bg-sky-500/10 border border-sky-500/20 rounded-md text-[9px] font-black text-sky-400 uppercase">
+                                        <div className="px-2 py-0.5 bg-blue-50 border border-blue-200 rounded-md text-[9px] font-black text-[#1d6fb5] uppercase">
                                             {config.measure}
                                         </div>
                                     </div>
@@ -984,40 +1091,40 @@ const DynamicStats: React.FC = () => {
                                     </p>
                                 </div>
                                 <div className="text-right flex flex-col items-end">
-                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-300 mb-1">
-                                        <RefreshCcw size={12} className="text-emerald-400" /> Auto-sync activé
+                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-600 mb-1">
+                                        <RefreshCcw size={12} className="text-[#0d7a3e]" /> Auto-sync activé
                                     </div>
-                                    <p className="text-[9px] text-slate-600 font-mono">Dernier calcul: {new Date().toLocaleTimeString()}</p>
+                                    <p className="text-[9px] text-slate-400 font-mono">Dernier calcul: {new Date().toLocaleTimeString()}</p>
                                 </div>
                             </div>
 
                             {/* Main Viz Area */}
                             <div className="flex-1 min-h-0 min-w-0">
                                 {config.viewMode === 'table' ? (
-                                    <div className="h-full overflow-auto custom-scrollbar">
+                                    <div className="h-full overflow-auto custom-scrollbar rounded-xl border border-slate-200">
                                         <table className="w-full text-left border-collapse text-xs">
-                                            <thead className="sticky top-0 bg-slate-900 border-b border-white/10 z-20">
+                                            <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-20">
                                                 <tr>
-                                                    <th className="p-4 font-bold text-sky-400">{DIMENSION_LABELS[config.dimension].toUpperCase()}</th>
+                                                    <th className="p-4 font-bold text-blue-700">{DIMENSION_LABELS[config.dimension].toUpperCase()}</th>
                                                     {breakdownKeys.length > 0 ? (
-                                                        breakdownKeys.map(k => <th key={k} className="p-4 font-bold text-slate-300">{k}</th>)
+                                                        breakdownKeys.map(k => <th key={k} className="p-4 font-bold text-slate-600">{k}</th>)
                                                     ) : (
-                                                        <th className="p-4 font-bold text-slate-300">VALEUR ({config.measure})</th>
+                                                        <th className="p-4 font-bold text-slate-600">VALEUR ({config.measure})</th>
                                                     )}
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-white/5">
+                                            <tbody className="divide-y divide-slate-100 bg-white">
                                                 {chartData.map((row, i) => (
-                                                    <tr key={i} className="hover:bg-white/5 transition-colors group">
-                                                        <td className="p-4 font-medium text-slate-300">{row.name}</td>
+                                                    <tr key={i} className="hover:bg-slate-50 transition-colors group">
+                                                        <td className="p-4 font-medium text-slate-800">{row.name}</td>
                                                         {breakdownKeys.length > 0 ? (
                                                             breakdownKeys.map(k => (
-                                                                <td key={k} className="p-4 font-mono text-slate-400">
+                                                                <td key={k} className="p-4 font-mono text-slate-600">
                                                                     {Math.abs(row[k] || 0).toLocaleString()}
                                                                 </td>
                                                             ))
                                                         ) : (
-                                                            <td className="p-4 font-mono text-sky-400 font-bold">{row.display.toLocaleString()}</td>
+                                                            <td className="p-4 font-mono text-blue-600 font-bold">{row.display.toLocaleString()}</td>
                                                         )}
                                                     </tr>
                                                 ))}
@@ -1034,16 +1141,16 @@ const DynamicStats: React.FC = () => {
                             </div>
 
                             {/* Dimension Selectors Bottom */}
-                            <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between shrink-0">
+                            <div className="mt-2 pt-2 border-t border-slate-200 flex items-center justify-between shrink-0">
                                 <div className="flex items-center gap-6">
                                     <div>
                                         <span className="text-[9px] font-black text-slate-500 uppercase block mb-1.5">Axe Principal</span>
                                         <select
                                             value={config.dimension}
                                             onChange={(e) => setConfig(p => ({ ...p, dimension: e.target.value as Dimension }))}
-                                            className="bg-white/5 border border-white/5 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:ring-1 focus:ring-sky-500 outline-none"
+                                            className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:ring-1 focus:ring-[#1d6fb5] outline-none"
                                         >
-                                            {Object.entries(DIMENSION_LABELS).map(([k, v]) => <option key={k} value={k} className="bg-slate-900">{v}</option>)}
+                                            {Object.entries(DIMENSION_LABELS).map(([k, v]) => <option key={k} value={k} className="bg-white">{v}</option>)}
                                         </select>
                                     </div>
                                     <div>
@@ -1051,10 +1158,23 @@ const DynamicStats: React.FC = () => {
                                         <select
                                             value={config.breakdown}
                                             onChange={(e) => setConfig(p => ({ ...p, breakdown: e.target.value as any }))}
-                                            className="bg-white/5 border border-white/5 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:ring-1 focus:ring-sky-500 outline-none"
+                                            className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 focus:ring-1 focus:ring-[#1d6fb5] outline-none"
                                         >
-                                            <option value="none" className="bg-slate-900">Aucune</option>
-                                            {Object.entries(DIMENSION_LABELS).map(([k, v]) => <option key={k} value={k} className="bg-slate-900">{v}</option>)}
+                                            <option value="none" className="bg-white">Aucune</option>
+                                            {Object.entries(DIMENSION_LABELS).map(([k, v]) => <option key={k} value={k} className="bg-white">{v}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <span className="text-[9px] font-black text-slate-500 uppercase block mb-1.5 italic text-sky-400">Territoire (Cartes)</span>
+                                        <select
+                                            value={selectedMapId}
+                                            onChange={(e) => setSelectedMapId(e.target.value)}
+                                            className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 text-xs text-[#1d6fb5] focus:ring-1 focus:ring-[#1d6fb5] outline-none font-bold"
+                                        >
+                                            <option value="national" className="bg-white">Niveau National (Tout)</option>
+                                            {personalizedMaps.map(m => (
+                                                <option key={m.id} value={String(m.id)} className="bg-white">{m.name}</option>
+                                            ))}
                                         </select>
                                     </div>
                                 </div>

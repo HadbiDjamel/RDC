@@ -8,12 +8,12 @@ from .serializers import ( # type: ignore
     MedicalHistorySerializer, PharmacovigilanceSerializer, MergedRecordSerializer,
     MedicalDictionarySerializer, ToxicityCriteriaSerializer,
     UserSerializer, HabitQuestionnaireSerializer,
-    DynamicFormConfigSerializer
+    DynamicFormConfigSerializer, PersonalizedMapSerializer
 )
 from .models import ( # type: ignore
     Patient, Tumor, Source, Wilaya, Commune, IcdO3, Icd10, MedicalHistory, 
     Pharmacovigilance, MergedRecord, MedicalDictionary, ToxicityCriteria,
-    HabitQuestionnaire, DynamicFormConfig
+    HabitQuestionnaire, DynamicFormConfig, PersonalizedMap
 )
 from django.contrib.auth.models import User # type: ignore
 from .utils.xml_manager import XMLConfigManager # type: ignore
@@ -24,6 +24,9 @@ from django.db.models import Q, Count # type: ignore
 from .services.mia_service import MiaAgent # type: ignore
 
 from rest_framework.decorators import action # type: ignore
+import csv
+import pandas as pd
+from django.http import HttpResponse # type: ignore
 
 class PatientViewSet(viewsets.ModelViewSet):
     queryset = Patient.objects.all()
@@ -34,6 +37,176 @@ class PatientViewSet(viewsets.ModelViewSet):
         patient = self.get_object()
         habits, created = HabitQuestionnaire.objects.get_or_create(patient=patient)
         return Response({'access_token': str(habits.access_token)})
+
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def check_collision_single(self, request):
+        nid = request.data.get('nid')
+        first_name = request.data.get('first_name', '').strip().lower()
+        last_name = request.data.get('last_name', '').strip().lower()
+        birth_date = request.data.get('birth_date')
+
+        # Criteria: Exact NID OR (Exact Name AND Exact Birthdate)
+        query = Q()
+        if nid:
+            query |= Q(nid=nid)
+        if first_name and last_name and birth_date:
+            query |= Q(first_name__iexact=first_name, last_name__iexact=last_name, birth_date=birth_date)
+
+        conflicts = list(Patient.objects.filter(query).values('id', 'nid', 'first_name', 'last_name', 'birth_date'))
+        
+        return Response({
+            'has_collision': len(conflicts) > 0,
+            'collisions': conflicts
+        })
+
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def bulk_import(self, request):
+        # Placeholder for CSV parsing & bulk duplication checking logic
+        # In this MVP, we mock the conflict return if file is empty
+        return Response({'has_collisions': False, 'collisions': []})
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny], authentication_classes=[])
+    def export_csv(self, request):
+        # 1. Authenticate JWT token from query parameters OR fallback to Authorization header
+        token = request.query_params.get('token')
+        user = None
+        
+        if token:
+            try:
+                from rest_framework_simplejwt.authentication import JWTAuthentication
+                jwt_auth = JWTAuthentication()
+                validated_token = jwt_auth.get_validated_token(token)
+                user = jwt_auth.get_user(validated_token)
+            except Exception:
+                pass
+                
+        if not user:
+            # Fallback: check Authorization header if it was sent
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer '):
+                raw_token = auth_header.split(' ')[1]
+                try:
+                    from rest_framework_simplejwt.authentication import JWTAuthentication
+                    jwt_auth = JWTAuthentication()
+                    validated_token = jwt_auth.get_validated_token(raw_token)
+                    user = jwt_auth.get_user(validated_token)
+                except Exception:
+                    pass
+        
+        if not user or not user.is_authenticated:
+            return HttpResponse("Non autorisé. Veuillez vous connecter.", status=401)
+
+        # 2. Proceed with generating the CSV
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="registre_export.csv"'
+        response.write('\ufeff')  # BOM for Excel UTF-8
+
+        writer = csv.writer(response)
+
+        # ── Headers ───────────────────────────────────────────────────────
+        PATIENT_HEADERS = [
+            'patient_id', 'registration_number', 'nid', 'last_name', 'first_name',
+            'maiden_name', 'gender', 'birth_date', 'birth_place',
+            'passport_number', 'social_security_number',
+            'phone', 'email', 'nationality', 'ethnicity',
+            'marital_status', 'occupation', 'education_level', 'income_bracket',
+            'emergency_contact',
+            'address_1', 'address_2', 'wilaya', 'wilaya_name', 'commune', 'commune_name',
+            'vital_status', 'date_of_death', 'cause_of_death_icd10', 'autopsy',
+            'last_contact_date',
+            'record_status', 'check_status', 'workflow',
+            'updated_by', 'created_at', 'updated_at',
+        ]
+        TUMOR_HEADERS = [
+            'tumeur_incidence_date', 'tumeur_topo_code', 'tumeur_morpho_code',
+            'tumeur_behaviour', 'tumeur_grade', 'tumeur_icd10_code',
+            'tumeur_basis_of_diagnosis', 'tumeur_laterality',
+            'tumeur_cT', 'tumeur_cN', 'tumeur_cM', 'tumeur_clinical_stage',
+            'tumeur_pT', 'tumeur_pN', 'tumeur_pM', 'tumeur_pathological_stage',
+            'tumeur_tnm_edition', 'tumeur_tumor_size',
+            'tumeur_diagnostic_status', 'tumeur_histology_detail', 'tumeur_who_classification',
+            'tumeur_mp_code', 'tumeur_tumour_number',
+            'tumeur_treatment_1', 'tumeur_treatment_2', 'tumeur_date_of_treatment',
+            'tumeur_check_status', 'tumeur_notes',
+        ]
+        SOURCE_HEADERS = [
+            'source_type', 'source_hospital_name', 'source_department',
+            'source_report_number', 'source_date_of_report',
+            'source_practitioner_name', 'source_reader_id',
+            'source_clinical_text', 'source_pathology_text',
+        ]
+        BIOMARKER_HEADERS = [
+            'bio_HER2', 'bio_ER', 'bio_PR', 'bio_Ki67',
+            'bio_EGFR', 'bio_ALK', 'bio_BRAF', 'bio_PD-L1',
+        ]
+
+        writer.writerow(PATIENT_HEADERS + TUMOR_HEADERS + SOURCE_HEADERS + BIOMARKER_HEADERS)
+
+        # ── Rows ──────────────────────────────────────────────────────────
+        patients = Patient.objects.select_related('wilaya', 'commune').prefetch_related(
+            'tumors__sources', 'tumors__biomarkers'
+        ).all()
+
+        BIOMARKER_NAMES = ['HER2', 'ER', 'PR', 'Ki67', 'EGFR', 'ALK', 'BRAF', 'PD-L1']
+
+        for p in patients:
+            tumor = p.tumors.first()
+            source = tumor.sources.first() if tumor else None
+            biomarkers = {b.test_name: b.result_value for b in tumor.biomarkers.all()} if tumor else {}
+
+            p_row = [
+                p.patient_id, p.registration_number, p.nid,
+                p.last_name, p.first_name, p.maiden_name or '',
+                p.get_gender_display(), p.birth_date, getattr(p, 'birth_place', ''),
+                p.passport_number or '', p.social_security_number or '',
+                p.phone or '', p.email or '', p.nationality, p.ethnicity or '',
+                p.get_marital_status_display() if p.marital_status else '',
+                p.occupation or '', p.education_level or '', p.income_bracket or '',
+                p.emergency_contact or '',
+                p.address_1 or '', p.address_2 or '',
+                p.wilaya_id or '', p.wilaya.name if p.wilaya else '',
+                p.commune_id or '', p.commune.name if p.commune else '',
+                p.get_vital_status_display(), p.date_of_death or '',
+                p.cause_of_death_icd10 or '', p.autopsy or '',
+                p.last_contact_date or '',
+                p.get_record_status_display(), p.get_check_status_display(), p.get_workflow_display(),
+                p.updated_by or '',
+                p.created_at.strftime('%Y-%m-%d %H:%M') if p.created_at else '',
+                p.updated_at.strftime('%Y-%m-%d %H:%M') if p.updated_at else '',
+            ]
+
+            t_row = [''] * len(TUMOR_HEADERS)
+            if tumor:
+                t_row = [
+                    tumor.incidence_date, tumor.topo_code, tumor.morpho_code,
+                    tumor.behaviour, tumor.grade, tumor.icd10_code or '',
+                    tumor.basis_of_diagnosis, tumor.laterality,
+                    tumor.clinical_t or '', tumor.clinical_n or '', tumor.clinical_m or '',
+                    tumor.clinical_stage_group or '',
+                    tumor.pathological_t or '', tumor.pathological_n or '', tumor.pathological_m or '',
+                    tumor.pathological_stage_group or '',
+                    tumor.tnm_edition, tumor.tumor_size or '',
+                    tumor.diagnostic_status, tumor.histology_detail or '', tumor.who_classification or '',
+                    tumor.mp_code, tumor.tumour_number,
+                    tumor.get_treatment_1_display(), tumor.treatment_2 or '', tumor.date_of_treatment or '',
+                    tumor.check_status, tumor.notes or '',
+                ]
+
+            s_row = [''] * len(SOURCE_HEADERS)
+            if source:
+                s_row = [
+                    source.get_source_type_display(), source.hospital_name or '',
+                    source.department or '', source.report_number or '',
+                    source.date_of_report or '', source.practitioner_name or '',
+                    source.reader_id or '',
+                    source.clinical_text or '', source.pathology_text or '',
+                ]
+
+            b_row = [biomarkers.get(name, '') for name in BIOMARKER_NAMES]
+
+            writer.writerow(p_row + t_row + s_row + b_row)
+
+        return response
 
 class TumorViewSet(viewsets.ModelViewSet):
     queryset = Tumor.objects.all()
@@ -66,6 +239,7 @@ class CommuneViewSet(viewsets.ReadOnlyModelViewSet):
 class IcdO3ViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = IcdO3.objects.all()
     serializer_class = IcdO3Serializer
+    filterset_fields = ['type']
 
 class Icd10ViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Icd10.objects.all()
@@ -358,3 +532,267 @@ class DynamicFormConfigViewSet(viewsets.ModelViewSet):
     queryset = DynamicFormConfig.objects.all()
     serializer_class = DynamicFormConfigSerializer
     permission_classes = [permissions.IsAdminUser]
+
+class WilayaStatsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        metric = request.query_params.get('metric', 'cases')
+        topo_code = request.query_params.get('cancer_type', None)
+
+        # Filter tumors
+        tumors = Tumor.objects.select_related('patient__wilaya').all()
+        if topo_code and topo_code != 'all':
+            tumors = tumors.filter(topo_code__startswith=topo_code)
+
+        # Basic population baseline for incidence mock-calc
+        # In a real system, this would be a table of wilaya populations
+        WILAYA_POP_BASELINE = {
+            '16': 3500000, # Alger
+            '31': 1600000, # Oran
+            '25': 1000000, # Constantine
+            # ... others default to 500k for demo
+        }
+
+        # Aggregate data by wilaya
+        stats = {}
+        for t in tumors:
+            w_id = t.patient.wilaya_id
+            if not w_id: continue
+            
+            if w_id not in stats:
+                stats[w_id] = {'cases': 0, 'mortality': 0}
+            
+            stats[w_id]['cases'] += 1
+            if t.patient.vital_status == 'D':
+                stats[w_id]['mortality'] += 1
+
+        # Format for frontend
+        results = []
+        # Actually, let's use the provided WILAYA_CENTROIDS logic
+        # Since I can't easily import from frontend/src, I'll use a helper or the model
+        wilayas = Wilaya.objects.all()
+        
+        # Temporary centroids for backend use if not available elsewhere
+        BACKEND_CENTROIDS = {
+            "01": {"lat": 27.87, "lng": -0.29}, "02": {"lat": 36.17, "lng": 1.34},
+            "03": {"lat": 33.80, "lng": 2.86}, "04": {"lat": 35.87, "lng": 7.11},
+            "05": {"lat": 35.56, "lng": 6.17}, "06": {"lat": 36.75, "lng": 5.08},
+            "07": {"lat": 34.85, "lng": 5.73}, "08": {"lat": 31.62, "lng": -2.22},
+            "09": {"lat": 36.47, "lng": 2.83}, "10": {"lat": 36.38, "lng": 3.90},
+            "11": {"lat": 22.79, "lng": 5.52}, "12": {"lat": 35.40, "lng": 8.12},
+            "13": {"lat": 34.89, "lng": -1.32}, "14": {"lat": 35.37, "lng": 1.32},
+            "15": {"lat": 36.71, "lng": 4.04}, "16": {"lat": 36.74, "lng": 3.06},
+            "17": {"lat": 34.68, "lng": 3.26}, "18": {"lat": 36.82, "lng": 5.77},
+            "19": {"lat": 36.19, "lng": 5.41}, "20": {"lat": 34.83, "lng": 0.15},
+            "21": {"lat": 36.88, "lng": 6.91}, "22": {"lat": 35.20, "lng": -0.63},
+            "23": {"lat": 36.90, "lng": 7.76}, "24": {"lat": 36.47, "lng": 7.43},
+            "25": {"lat": 36.37, "lng": 6.61}, "26": {"lat": 36.26, "lng": 2.75},
+            "27": {"lat": 35.93, "lng": 0.09}, "28": {"lat": 35.70, "lng": 4.54},
+            "29": {"lat": 35.40, "lng": 0.14}, "30": {"lat": 31.95, "lng": 5.34},
+            "31": {"lat": 35.70, "lng": -0.63}, "32": {"lat": 33.68, "lng": 1.02},
+            "33": {"lat": 26.51, "lng": 8.47}, "34": {"lat": 36.07, "lng": 4.76},
+            "35": {"lat": 36.76, "lng": 3.63}, "36": {"lat": 36.77, "lng": 8.31},
+            "37": {"lat": 27.67, "lng": -8.14}, "38": {"lat": 35.60, "lng": 1.81},
+            "39": {"lat": 33.36, "lng": 6.85}, "40": {"lat": 35.44, "lng": 7.14},
+            "41": {"lat": 36.28, "lng": 7.95}, "42": {"lat": 36.59, "lng": 2.44},
+            "43": {"lat": 36.45, "lng": 6.27}, "44": {"lat": 36.26, "lng": 1.97},
+            "45": {"lat": 33.27, "lng": -0.31}, "46": {"lat": 35.30, "lng": -1.14},
+            "47": {"lat": 32.49, "lng": 3.67}, "48": {"lat": 35.74, "lng": 0.56},
+            "49": {"lat": 33.95, "lng": 5.93}, "50": {"lat": 30.58, "lng": 2.88},
+            "51": {"lat": 34.42, "lng": 5.07}, "52": {"lat": 21.33, "lng": 0.95},
+            "53": {"lat": 30.13, "lng": -2.17}, "54": {"lat": 29.26, "lng": 0.24},
+            "55": {"lat": 33.10, "lng": 6.07}, "56": {"lat": 24.55, "lng": 9.48},
+            "57": {"lat": 27.20, "lng": 2.47}, "58": {"lat": 19.57, "lng": 5.77},
+        }
+
+        for w in wilayas:
+            w_id = w.code
+            w_stats = stats.get(w_id, {'cases': 0, 'mortality': 0})
+            coords = BACKEND_CENTROIDS.get(w_id, {"lat": 28, "lng": 2})
+            
+            val = 0
+            if metric == 'cases':
+                val = w_stats['cases']
+            elif metric == 'mortality':
+                val = w_stats['mortality']
+            elif metric == 'incidence':
+                pop = WILAYA_POP_BASELINE.get(w_id, 500000)
+                val = round((w_stats['cases'] / pop) * 100000, 2)
+            
+            results.append({
+                'wilayaId': w_id,
+                'name': w.name,
+                'lat': coords['lat'],
+                'lng': coords['lng'],
+                'value': val
+            })
+
+        return Response(results)
+
+class PersonalizedMapViewSet(viewsets.ModelViewSet):
+    serializer_class = PersonalizedMapSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Admins see all, others see only theirs (though currently mostly for admins)
+        if self.request.user.is_staff:
+            return PersonalizedMap.objects.all()
+        return PersonalizedMap.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class DataImportPreviewView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Response({'error': 'Aucun fichier fourni.'}, status=400)
+            
+        try:
+            if file_obj.name.endswith('.csv'):
+                df = pd.read_csv(file_obj, nrows=0)
+            elif file_obj.name.endswith(('.xls', '.xlsx')):
+                df = pd.read_excel(file_obj, nrows=0)
+            else:
+                return Response({'error': 'Format non supporté.'}, status=400)
+                
+            headers = df.columns.tolist()
+            return Response({'headers': headers})
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+class DataImportProcessView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        file_obj = request.FILES.get('file')
+        mapping_str = request.data.get('mapping')
+        
+        if not file_obj or not mapping_str:
+            return Response({'error': 'Fichier ou mapping manquant.'}, status=400)
+            
+        try:
+            import json
+            mapping = json.loads(mapping_str)
+        except:
+            return Response({'error': 'Mapping JSON invalide.'}, status=400)
+            
+        try:
+            if file_obj.name.endswith('.csv'):
+                df = pd.read_csv(file_obj)
+            else:
+                df = pd.read_excel(file_obj)
+                
+            # Filter columns that are mapped and rename them
+            cols_to_keep = list(mapping.keys())
+            df = df[[col for col in cols_to_keep if col in df.columns]]
+            df = df.rename(columns=mapping)
+            
+            success_count = 0
+            errors = []
+            
+            for index, row in df.iterrows():
+                try:
+                    row_data = row.to_dict()
+                    row_data = {k: ('' if pd.isna(v) else str(v).strip()) for k, v in row_data.items()}
+                    
+                    patient_data = {}
+                    tumor_data = {}
+                    
+                    for k, v in row_data.items():
+                        if k.startswith('tumor_'):
+                            if v: # Only keep non-empty tumor fields
+                                tumor_data[k.replace('tumor_', '')] = v
+                        else:
+                            patient_data[k] = v
+                    
+                    # ── Sanitize Patient Data ──
+                    # 1. Foreign keys: wilaya_id, commune_id
+                    for fk in ['wilaya_id', 'commune_id']:
+                        if fk in patient_data:
+                            val = patient_data[fk]
+                            if val == '' or val is None:
+                                patient_data[fk] = None
+                            else:
+                                # Ensure it's a clean string
+                                patient_data[fk] = str(val).strip()
+
+                    # 2. Integer fields: gender
+                    if 'gender' in patient_data:
+                        try:
+                            g_val = str(patient_data['gender']).strip()
+                            if g_val in ['1', '2', '9']:
+                                patient_data['gender'] = int(g_val)
+                            elif g_val.lower().startswith('m') or g_val.lower().startswith('h'):
+                                patient_data['gender'] = 1
+                            elif g_val.lower().startswith('f'):
+                                patient_data['gender'] = 2
+                            else:
+                                patient_data['gender'] = 9
+                        except:
+                            patient_data['gender'] = 9
+                    else:
+                        patient_data['gender'] = 9
+
+                    # 3. Clean empty strings to None (or pop them if they are foreign keys)
+                    for k in list(patient_data.keys()):
+                        if patient_data[k] == '':
+                            patient_data[k] = None
+
+                    # Basic validation or defaults for Patient
+                    if not patient_data.get('first_name'):
+                        patient_data['first_name'] = 'Inconnu'
+                    if not patient_data.get('last_name'):
+                        patient_data['last_name'] = 'Inconnu'
+                    if not patient_data.get('birth_date'):
+                        patient_data['birth_date'] = '99/99/9999'
+                    
+                    patient = Patient.objects.create(**patient_data)
+                    
+                    # Create Tumor if tumor fields were mapped
+                    if tumor_data:
+                        # ── Sanitize Tumor Data ──
+                        # 1. Integer fields: tumor_size
+                        if 'tumor_size' in tumor_data:
+                            try:
+                                t_size = str(tumor_data['tumor_size']).strip()
+                                if t_size and t_size != '':
+                                    # handle float values represented as strings (e.g. '15.0')
+                                    tumor_data['tumor_size'] = int(float(t_size))
+                                else:
+                                    tumor_data['tumor_size'] = None
+                            except:
+                                tumor_data['tumor_size'] = None
+
+                        # 2. Clean other empty fields to None
+                        for k in list(tumor_data.keys()):
+                            if tumor_data[k] == '':
+                                tumor_data[k] = None
+
+                        # Provide fallbacks for required core fields if missing
+                        if not tumor_data.get('incidence_date'):
+                            tumor_data['incidence_date'] = '99/99/9999'
+                        if not tumor_data.get('topo_code'):
+                            tumor_data['topo_code'] = 'C80.9'
+                        if not tumor_data.get('morpho_code'):
+                            tumor_data['morpho_code'] = '8000/3'
+                        if not tumor_data.get('behaviour'):
+                            tumor_data['behaviour'] = '3'
+                            
+                        Tumor.objects.create(patient=patient, **tumor_data)
+                        
+                    success_count += 1
+                except Exception as e:
+                    errors.append(f"Ligne {index + 2}: {str(e)}")
+            
+            return Response({
+                'success_count': success_count,
+                'errors': errors
+            })
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+

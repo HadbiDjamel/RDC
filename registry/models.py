@@ -489,3 +489,15 @@ class DynamicFormConfig(models.Model):
 
     def __str__(self):
         return f"{self.form_name} - {self.field_id}"
+
+
+class PersonalizedMap(models.Model):
+    name = models.CharField(max_length=100)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='personalized_maps')
+    wilayas = models.ManyToManyField(Wilaya, related_name='personalized_maps')
+    # zones stores a list of drawn polygon zones: [{id, name, color, points: [{x, y}]}]
+    zones = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.user.username})"

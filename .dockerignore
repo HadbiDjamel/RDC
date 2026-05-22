@@ -1,0 +1,31 @@
+# Ignore local environment folders
+node_modules/
+venv/
+.venv/
+env/
+
+# Ignore Tauri artifacts (Very Heavy)
+src-tauri/target/
+src-tauri/bin/
+src-tauri/gen/
+
+# Ignore build artifacts
+dist/
+build/
+
+# Ignore logs and temporary files
+*.log
+**/.DS_Store
+.git
+.gitignore
+.dockerignore
+tmp/
+
+# Ignore Tauri build artifacts
+frontend/src-tauri/target
+frontend/src-tauri/bin
+frontend/src-tauri/gen
+
+# Ignore frontend build artifacts
+frontend/dist
+frontend/build

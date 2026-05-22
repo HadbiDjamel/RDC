@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     AlertCircle, CheckCircle2, Database, Stethoscope, FileText, Activity,
-    Zap, Shield, Microscope, Phone, FlaskConical, ChevronDown, User
+    Zap, Shield, Microscope, Phone, FlaskConical, ChevronDown, User, AlertTriangle
 } from 'lucide-react';
+import axios from 'axios';
 
 // ── Helpers ──────────────────────────────────────────────────────
 const FEMALE_SITES = ['C50', 'C51', 'C52', 'C53', 'C54', 'C55', 'C56', 'C57', 'C58'];
@@ -11,9 +12,18 @@ const MALE_SITES = ['C60', 'C61', 'C62', 'C63'];
 const PAIRED_SITES = ['C50', 'C34', 'C64', 'C69', 'C74', 'C62', 'C56', 'C44'];
 
 function calcAge(b: string, r: string): number | null {
-    const parse = (s: string) => { const p = s.split('/'); if (p.length !== 3) return null; const [d, m, y] = p.map(Number); if (!y || y === 9999) return null; return { d: d === 99 ? 1 : d, m: m === 99 ? 1 : m, y }; };
-    const bp = parse(b), rp = parse(r); if (!bp || !rp) return null;
-    let a = rp.y - bp.y; if (rp.m < bp.m || (rp.m === bp.m && rp.d < bp.d)) a--; return a >= 0 ? a : null;
+    const parse = (s: string) => { 
+        const p = s.split('/'); 
+        if (p.length !== 3) return null; 
+        const [d, m, y] = p.map(Number); 
+        if (!y || y === 9999) return null; 
+        return { d: d === 99 ? 1 : d, m: m === 99 ? 1 : m, y }; 
+    };
+    const bp = parse(b), rp = parse(r); 
+    if (!bp || !rp) return null;
+    let a = rp.y - bp.y; 
+    if (rp.m < bp.m || (rp.m === bp.m && rp.d < bp.d)) a--; 
+    return a >= 0 ? a : null;
 }
 
 const WILAYA_OPTIONS = [
@@ -65,54 +75,55 @@ interface FieldProps {
     type?: string, full?: boolean, auto?: boolean, disabled?: boolean,
     error?: string, warn?: string;
 }
+
 const Field: React.FC<FieldProps> = ({ label, value, onChange, placeholder, options, type = 'text', full, auto, disabled, error, warn }) => (
     <div className={`space-y-1 ${full ? 'col-span-full' : ''}`}>
         <div className="flex justify-between items-center px-1">
             <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">{label}</label>
-            {auto && <div className="flex items-center gap-1 text-[8px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-full"><Zap size={8} /> Auto</div>}
+            {auto && <div className="flex items-center gap-1 text-[8px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-100"><Zap size={8} /> Auto</div>}
         </div>
         {options ? (
             <div className="relative group">
-                <select value={value} onChange={e => onChange(e.target.value)} disabled={disabled} className={`w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white appearance-none focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition-all cursor-pointer ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}>
-                    {options.map(o => <option key={o.value} value={o.value} className="bg-slate-900 text-white">{o.label}</option>)}
+                <select value={value} onChange={e => onChange(e.target.value)} disabled={disabled} className={`w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-slate-50/50 ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}>
+                    {options.map(o => <option key={o.value} value={o.value} className="bg-white text-slate-800">{o.label}</option>)}
                 </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none group-hover:text-slate-300 transition-colors"><ChevronDown size={14} /></div>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-slate-600 transition-colors"><ChevronDown size={14} /></div>
             </div>
         ) : (
-            <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} disabled={disabled} className={`w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-sky-500/50 placeholder:text-slate-700 transition-all ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`} />
+            <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} disabled={disabled} className={`w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 placeholder:text-slate-300 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-slate-50/50 ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`} />
         )}
         {(error || warn) && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`text-[10px] mt-1 flex items-center gap-1 ${error ? 'text-rose-400' : 'text-amber-400'}`}><AlertCircle size={9} />{error || warn}</motion.p>}
     </div>
 );
 
 const SectionHeader = ({ title, icon: Icon, badge }: { title: string; icon: any; badge?: string }) => (
-    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/5">
-        <div className="p-1.5 bg-sky-500/10 rounded-lg text-sky-400"><Icon size={16} /></div>
-        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex-1">{title}</h3>
-        {badge && <span className="text-[8px] bg-slate-500/20 text-slate-400 px-2 py-0.5 rounded-full font-black uppercase border border-slate-500/20">{badge}</span>}
+    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+        <div className="p-1.5 bg-blue-50 rounded-lg text-blue-600"><Icon size={16} /></div>
+        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex-1">{title}</h3>
+        {badge && <span className="text-[8px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-black uppercase border border-slate-200">{badge}</span>}
     </div>
 );
 
 const ReadOnlyCard = ({ title, icon: Icon, data, badge }: { title: string, icon: any, data: { label: string, value: string }[] | Record<string, string>, badge?: string }) => (
-    <div className="glass-card p-5 bg-black/20 border-white/5">
+    <div className="portal-card p-5 bg-slate-50/50 border-slate-200">
         <SectionHeader title={title} icon={Icon} badge={badge || "Lecture Seule"} />
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-4">
             {Array.isArray(data) ? data.map((d, i) => d.value ? (
                 <div key={i}>
                     <p className="text-[10px] font-semibold text-slate-500 mb-0.5">{d.label}</p>
-                    <p className="text-sm font-medium text-slate-300">{d.value}</p>
+                    <p className="text-sm font-medium text-slate-700">{d.value}</p>
                 </div>
             ) : null) : Object.entries(data).map(([label, value], i) => value ? (
                 <div key={i}>
                     <p className="text-[10px] font-semibold text-slate-500 mb-0.5">{label}</p>
-                    <p className="text-sm font-medium text-slate-300">{value}</p>
+                    <p className="text-sm font-medium text-slate-700">{value}</p>
                 </div>
             ) : null)}
         </div>
     </div>
 );
 
-// ── Props ────────────────────────────────────────────────────────
+// ── Main Form Component ──────────────────────────────────────────
 interface PatientFormProps {
     role: 'admin' | 'medecin' | 'anapate' | 'labo';
     prefillData?: any;
@@ -120,43 +131,38 @@ interface PatientFormProps {
     activeModule?: string | null;
 }
 
-// ── Main Form ────────────────────────────────────────────────────
 const PatientForm: React.FC<PatientFormProps> = ({ role, prefillData, initialData, activeModule = 'full' }) => {
     const [formData, setFormData] = useState({
-        // Identity (Médecin)
         nid: '', last_name: '', first_name: '', maiden_name: '', gender: '9', birth_date: '', birth_place: '',
         phone: '', nationality: 'Algérienne', marital_status: 'U', occupation: '',
         address_1: '', wilaya: '', commune: '',
-        vital_status: 'A', date_of_death: '',
-        // Clinical Base
+        vital_status: 'A', date_of_death: '', autopsy: '',
         family_history: '9', performance_status: '9', comorbidities: '',
         smoking_status: '9', alcohol_status: '9', menopause_status: '9',
-        // Clinical (Médecin)
         incidence_date: '', topo_code: '', basis_of_diagnosis: '9',
         clinical_t: '', clinical_n: '', clinical_m: '', clinical_stage: '',
         laterality: '0', notes: '',
-        // Source (Médecin)
         source_type: 'CL', hospital_name: '', department: '', practitioner_name: '', clinical_text: '',
-        // Pathology (Anapath)
         morpho_code: '', behaviour: '3', grade: '9',
         path_t: '', path_n: '', path_m: '', path_stage: '',
         tumor_size: '', report_number: '', pathology_text: '', reader_id: '', nodes_pos: '',
-        // Labo
         psa: '', cea: '', ca125: '', ca199: '', afp: '', hcg: '',
         hemoglobin: '', wbc: '', platelets: '', ldh: '', alp: '',
         labo_notes: '', labo_date: '',
         her2: '', er_percent: '', pr_percent: '', ki67: '', egfr: '', alk: '', braf: '', pdl1: '',
-        // Admin
         registration_number: '', record_status: '0', check_status: 'Unchecked',
         icd10_code: '', treatment_1: '9', treatment_2: '', mp_code: '00',
     });
+
+    const [dynamicData, setDynamicData] = useState<Record<string, string>>({});
+    const [dynamicConfigs, setDynamicConfigs] = useState<any[]>([]);
     const [autoFlags, setAutoFlags] = useState<Record<string, boolean>>({});
     const [vResults, setVResults] = useState<{ errors: string[], warnings: string[] }>({ errors: [], warnings: [] });
+    const [collisionData, setCollisionData] = useState<any[] | null>(null);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [dictOptions, setDictOptions] = useState<Record<string, { value: string, label: string }[]>>({});
 
-    // Spatial Modular Form State
     const [activeSection, setActiveSection] = useState<'identity' | 'clinical' | 'anapath' | 'labo' | 'admin'>(() => {
         if (activeModule === 'full' || !activeModule) {
             if (role === 'medecin') return 'identity';
@@ -164,11 +170,72 @@ const PatientForm: React.FC<PatientFormProps> = ({ role, prefillData, initialDat
             if (role === 'anapate') return 'anapath';
             return 'admin';
         }
-        if (activeModule === 'morpho' || activeModule === 'ptnm') return 'anapath';
-        return (activeModule as 'identity' | 'clinical' | 'anapath' | 'labo' | 'admin');
+        return 'clinical';
     });
 
-    const set = (k: string, v: any) => setFormData(p => ({ ...p, [k]: v }));
+    const [tumors, setTumors] = useState<any[]>([
+        { id: 1, name: 'Tumeur 1', morpho_code: '', topo_code: '', laterality: '0', basis_of_diagnosis: '9', behaviour: '3', grade: '9', path_t: '', path_n: '', path_m: '', path_stage: '', tumor_size: '', report_number: '', nodes_pos: '' }
+    ]);
+    const [activeTumorId, setActiveTumorId] = useState<number>(1);
+
+    const tumorFieldKeys = [
+        'morpho_code', 'topo_code', 'laterality', 'basis_of_diagnosis', 
+        'behaviour', 'grade', 'path_t', 'path_n', 'path_m', 'path_stage', 
+        'tumor_size', 'report_number', 'nodes_pos'
+    ];
+
+    const set = (k: string, v: any) => {
+        setFormData(p => {
+            const next = { ...p, [k]: v };
+            if (tumorFieldKeys.includes(k)) {
+                setTumors(tums => tums.map(t => t.id === activeTumorId ? { ...t, [k]: v } : t));
+            }
+            return next;
+        });
+    };
+
+    const switchActiveTumor = (targetId: number) => {
+        const targetTumor = tumors.find(t => t.id === targetId);
+        if (!targetTumor) return;
+        setActiveTumorId(targetId);
+        setFormData(p => {
+            const next = { ...p };
+            tumorFieldKeys.forEach(key => {
+                next[key] = targetTumor[key] || (key === 'behaviour' ? '3' : key === 'grade' || key === 'basis_of_diagnosis' ? '9' : '');
+            });
+            return next;
+        });
+    };
+
+    const addMultipleTumor = () => {
+        const nextId = tumors.length + 1;
+        const newTumor = {
+            id: nextId,
+            name: `Tumeur ${nextId}`,
+            morpho_code: '',
+            topo_code: '',
+            laterality: '0',
+            basis_of_diagnosis: '9',
+            behaviour: '3',
+            grade: '9',
+            path_t: '',
+            path_n: '',
+            path_m: '',
+            path_stage: '',
+            tumor_size: '',
+            report_number: '',
+            nodes_pos: ''
+        };
+        setTumors(prev => [...prev, newTumor]);
+        setActiveTumorId(nextId);
+        setFormData(p => {
+            const next = { ...p };
+            tumorFieldKeys.forEach(key => {
+                next[key] = newTumor[key];
+            });
+            return next;
+        });
+    };
 
     useEffect(() => {
         const fetchDict = async () => {
@@ -183,363 +250,359 @@ const PatientForm: React.FC<PatientFormProps> = ({ role, prefillData, initialDat
                     });
                     setDictOptions(grouped);
                 }
-            } catch (e) {
-                console.error("Failed to fetch dictionary", e);
-            }
+            } catch (e) { console.error(e); }
         };
         fetchDict();
+        
+        const configs = JSON.parse(localStorage.getItem('dynamic_fields_config') || '[]');
+        setDynamicConfigs(configs);
     }, []);
 
     useEffect(() => {
-        if (prefillData) {
-            setFormData(p => ({ ...p, ...prefillData }));
-            const flags: Record<string, boolean> = {};
-            Object.keys(prefillData).forEach(k => { flags[k] = true; });
-            setAutoFlags(p => ({ ...p, ...flags }));
-        }
-    }, [prefillData]);
-
-    useEffect(() => {
         if (initialData) {
-            setFormData(p => ({ ...p, ...initialData }));
+            // Retrieve any codes entered in the Codage CIM-O-3 Batch Terminal!
+            const batchCoded = JSON.parse(localStorage.getItem('batch_coded_patients') || '{}');
+            const patientCoded = batchCoded[initialData.nid] || {};
+            setFormData(p => ({ 
+                ...p, 
+                ...initialData,
+                ...patientCoded
+            }));
         }
     }, [initialData]);
 
     useEffect(() => {
-        const prefix = formData.topo_code.toUpperCase().split('.')[0];
-        if (FEMALE_SITES.includes(prefix) && formData.gender !== '2') { set('gender', '2'); setAutoFlags(p => ({ ...p, gender: true })); }
-        else if (MALE_SITES.includes(prefix) && formData.gender !== '1') { set('gender', '1'); setAutoFlags(p => ({ ...p, gender: true })); }
-        else { setAutoFlags(p => ({ ...p, gender: false })); }
-    }, [formData.topo_code, formData.gender]); // Added formData.gender to dependencies
+        if (prefillData) setFormData(p => ({ ...p, ...prefillData }));
+    }, [prefillData]);
 
-    useEffect(() => {
-        const m = formData.morpho_code.match(/\/(\d)$/);
-        if (m && m[1] !== formData.behaviour) { set('behaviour', m[1]); setAutoFlags(p => ({ ...p, behaviour: true })); }
-    }, [formData.morpho_code, formData.behaviour]); // Added formData.behaviour to dependencies
+    const age = useMemo(() => calcAge(formData.birth_date, formData.incidence_date || ''), [formData.birth_date, formData.incidence_date]);
 
-    useEffect(() => {
-        const b = parseInt(formData.basis_of_diagnosis);
-        if ([1, 2, 4].includes(b) && !formData.morpho_code) { set('morpho_code', '8000/3'); setAutoFlags(p => ({ ...p, morpho_code: true })); }
-    }, [formData.basis_of_diagnosis, formData.morpho_code]); // Added formData.morpho_code to dependencies
-
-    const age = useMemo(() => calcAge(formData.birth_date, formData.incidence_date || new Date().toLocaleDateString('fr-FR')), [formData.birth_date, formData.incidence_date]);
-    const isDead = formData.vital_status === 'D';
-    const isPaired = PAIRED_SITES.some(s => formData.topo_code.toUpperCase().startsWith(s));
-
-    useEffect(() => {
-        if (!formData.topo_code && !formData.morpho_code) return;
-        const t = setTimeout(async () => {
-            try {
-                const r = await fetch('/api/validation/check/', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ gender: formData.gender, topo_code: formData.topo_code, morpho_code: formData.morpho_code, age: age ?? 45 })
-                });
-                if (r.ok) setVResults(await r.json());
-            } catch { }
-        }, 800);
-        return () => clearTimeout(t);
-    }, [formData.topo_code, formData.morpho_code, formData.gender, age]);
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault(); setLoading(true);
-        setTimeout(() => { setLoading(false); setSuccess(true); }, 1200);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setTimeout(() => { setLoading(false); setSuccess(true); }, 1000);
     };
 
-    if (success) return (
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-card p-12 text-center max-w-lg mx-auto mt-10">
-            <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-400 mx-auto mb-6"><CheckCircle2 size={32} /></div>
-            <h3 className="text-xl font-bold text-white mb-2">
-                {role === 'medecin' ? 'Patient Enregistré — En attente Labo & Anapath' :
-                    role === 'labo' ? 'Résultats Laboratoire Enregistrés' :
-                        role === 'anapate' ? 'Codage Pathologique Sauvegardé' : 'Dossier Validé et Finalisé'}
-            </h3>
-            <p className="text-slate-500 text-sm mb-8">
-                {role === 'medecin' ? 'Le dossier a été créé. Le laboratoire et le pathologiste peuvent ajouter leurs résultats.' :
-                    role === 'labo' ? 'Les marqueurs tumoraux et résultats biologiques ont été enregistrés.' :
-                        role === 'anapate' ? 'Les codes CIM-O-3, le grade et le staging pathologique ont été enregistrés.' :
-                            'Le dossier est complet et conforme aux normes IARC. N° d\'enregistrement attribué.'}
-            </p>
-            <button onClick={() => setSuccess(false)} className="px-8 py-3 bg-sky-500 hover:bg-sky-400 text-white rounded-xl font-bold transition-all">Continuer</button>
-        </motion.div>
-    );
+    const isDisabled = (section: 'identity' | 'clinical' | 'anapath' | 'labo' | 'admin') => {
+        if (role === 'admin') return false;
+        if (role === 'medecin') return !(section === 'identity' || section === 'clinical');
+        if (role === 'anapate') return section !== 'anapath' && section !== 'clinical';
+        if (role === 'labo') return section !== 'labo';
+        return true;
+    };
 
-    // ── Hard Stop for Contextless Ancillary Roles ───────────────────
-    if (role !== 'medecin' && !formData.nid) {
-        return (
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-card border-rose-500/30 p-12 text-center max-w-lg mx-auto mt-10">
-                <div className="w-16 h-16 bg-rose-500/20 rounded-full flex items-center justify-center text-rose-400 mx-auto mb-6"><AlertCircle size={32} /></div>
-                <h3 className="text-xl font-bold text-white mb-2">Aucun Patient Sélectionné</h3>
-                <p className="text-slate-400 text-sm mb-6">
-                    Vous ne pouvez pas effectuer de saisie sans un dossier patient actif.
-                    Veuillez charger un patient depuis votre file d'attente ou l'annuaire.
-                </p>
-            </motion.div>
-        );
-    }
+    const removeTumor = (tumorId: number) => {
+        if (tumorId === 1) return; // Main tumor must remain
+        
+        setTumors(prev => {
+            const filtered = prev.filter(t => t.id !== tumorId);
+            // Re-index remaining tumors sequentially (Tumeur 1, Tumeur 2...)
+            return filtered.map((t, idx) => ({
+                ...t,
+                id: idx + 1,
+                name: `Tumeur ${idx + 1}`
+            }));
+        });
+        
+        if (activeTumorId === tumorId) {
+            switchActiveTumor(1);
+        } else if (activeTumorId > tumorId) {
+            setActiveTumorId(prev => prev - 1);
+        }
+    };
 
-    const isIdentityMissing = role === 'medecin' && (!formData.nid || !formData.last_name || !formData.first_name);
+    const isVisible = (fieldId: string) => {
+        const config = dynamicConfigs.find(c => c.field_id === fieldId);
+        return config ? config.is_visible : true;
+    };
 
-    // ── Role-specific rendering ──────────────────────────────────
+    if (success) return <div className="p-10 text-center">Succès !</div>;
+
     return (
         <form onSubmit={handleSubmit} className="max-w-5xl mx-auto space-y-6 pb-10">
-            {/* Header */}
-            <div className="flex justify-between items-end">
-                <div>
-                    <h2 className="text-xl font-black text-white flex items-center gap-2">
-                        {role === 'medecin' && <><Stethoscope size={20} className="text-sky-400" /> {activeModule === 'full' ? 'Saisie Clinique' : 'Module Spécifique'}</>}
-                        {role === 'labo' && <><FlaskConical size={20} className="text-amber-400" /> Résultats Laboratoire</>}
-                        {role === 'anapate' && <><Microscope size={20} className="text-emerald-400" /> Codage Anapate</>}
-                        {role === 'admin' && <><Shield size={20} className="text-violet-400" /> Validation IARC</>}
-                    </h2>
-                    <p className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500 mt-1">Section Active: {activeSection}</p>
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                    <Database size={24} className="text-blue-600" /> Registre Clinique
+                </h2>
+                <div className="flex gap-2">
+                    {['identity', 'clinical', 'anapath', 'labo', 'admin'].map(s => (
+                        <button key={s} type="button" onClick={() => setActiveSection(s as any)}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${activeSection === s ? 'bg-blue-600 text-white border-blue-700 shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}>
+                            {s}
+                        </button>
+                    ))}
                 </div>
-                {formData.nid && (
-                    <div className="glass-card px-4 py-2 flex items-center gap-3 border-sky-500/20">
-                        <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-400"><User size={14} /></div>
-                        <div>
-                            <p className="text-[10px] font-black text-white uppercase">{formData.last_name} {formData.first_name}</p>
-                            <p className="text-[8px] font-mono text-slate-500">{formData.nid}</p>
+            </div>
+
+            {/* Helper for rendering custom dynamic fields from Studio */}
+            <div className="hidden">
+                {/* We will just inject this logic directly into the sections below */}
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+                {activeSection === 'identity' && (
+                    <fieldset disabled={isDisabled('identity')} className="portal-card p-6 bg-white border-slate-200 space-y-6 border-none outline-none disabled:bg-slate-50/30">
+                        <SectionHeader title="Identité & Démographie" icon={User} badge={isDisabled('identity') ? "Lecture Seule" : undefined} />
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                            {isVisible('nid') && <Field label="NID" value={formData.nid} onChange={v => set('nid', v)} />}
+                            {isVisible('last_name') && <Field label="Nom" value={formData.last_name} onChange={v => set('last_name', v)} />}
+                            {isVisible('first_name') && <Field label="Prénom" value={formData.first_name} onChange={v => set('first_name', v)} />}
+                            
+                            <AnimatePresence>
+                                {formData.gender === '2' && isVisible('maiden_name') && (
+                                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                        <Field label="Nom de jeune fille" value={formData.maiden_name} onChange={v => set('maiden_name', v)} />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {isVisible('birth_date') && <Field label="Date de Naissance" value={formData.birth_date} onChange={v => set('birth_date', v)} />}
+                            {isVisible('birth_place') && <Field label="Lieu de Naissance" value={formData.birth_place} onChange={v => set('birth_place', v)} />}
+                            {isVisible('gender') && <Field label="Sexe" value={formData.gender} onChange={v => set('gender', v)} options={[{value:'1', label:'Homme'}, {value:'2', label:'Femme'}, {value:'9', label:'Inconnu'}]} />}
+                            {isVisible('nationality') && <Field label="Nationalité" value={formData.nationality} onChange={v => set('nationality', v)} />}
+                            {isVisible('marital_status') && <Field label="Situation Familiale" value={formData.marital_status} onChange={v => set('marital_status', v)} options={[{value:'S', label:'Célibataire'}, {value:'M', label:'Marié'}, {value:'D', label:'Divorcé'}, {value:'W', label:'Veuf'}, {value:'U', label:'Inconnu'}]} />}
+                            {isVisible('occupation') && <Field label="Profession" value={formData.occupation} onChange={v => set('occupation', v)} />}
+                            {isVisible('phone') && <Field label="Numéro de Téléphone" value={formData.phone} onChange={v => set('phone', v)} />}
+                            {isVisible('address_1') && <Field label="Adresse Précise" value={formData.address_1} onChange={v => set('address_1', v)} />}
+                            {isVisible('wilaya') && <Field label="Wilaya" value={formData.wilaya} onChange={v => set('wilaya', v)} options={WILAYA_OPTIONS} />}
+                            {isVisible('commune') && <Field label="Commune" value={formData.commune} onChange={v => set('commune', v)} />}
+                            {isVisible('vital_status') && <Field label="Statut Vital" value={formData.vital_status} onChange={v => set('vital_status', v)} options={[{value:'A', label:'Vivant'}, {value:'D', label:'Décédé'}, {value:'U', label:'Inconnu'}]} />}
+
+                            <AnimatePresence>
+                                {formData.vital_status === 'D' && (
+                                    <>
+                                        {isVisible('date_of_death') && (
+                                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                                <Field label="Date de décès" value={formData.date_of_death} onChange={v => set('date_of_death', v)} />
+                                            </motion.div>
+                                        )}
+                                        {isVisible('autopsy') && (
+                                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                                <Field label="Autopsie" value={formData.autopsy || ''} onChange={v => set('autopsy', v)} options={[{value:'Y', label:'Oui'}, {value:'N', label:'Non'}, {value:'U', label:'Inconnu'}]} />
+                                            </motion.div>
+                                        )}
+                                    </>
+                                )}
+                            </AnimatePresence>
+
+                            {isVisible('family_history') && <Field label="Antécédents Familiaux" value={formData.family_history} onChange={v => set('family_history', v)} options={[{value:'0', label:'Aucun'}, {value:'1', label:'Présents'}, {value:'9', label:'Inconnu'}]} />}
+                            {isVisible('comorbidities') && <Field label="Comorbidités" value={formData.comorbidities} onChange={v => set('comorbidities', v)} />}
+                            {isVisible('smoking_status') && <Field label="Tabagisme" value={formData.smoking_status} onChange={v => set('smoking_status', v)} options={[{value:'0', label:'Non-fumeur'}, {value:'1', label:'Fumeur actif'}, {value:'2', label:'Ex-fumeur'}, {value:'9', label:'Inconnu'}]} />}
+                            {isVisible('alcohol_status') && <Field label="Alcoolisme" value={formData.alcohol_status} onChange={v => set('alcohol_status', v)} options={[{value:'0', label:'Non-consommateur'}, {value:'1', label:'Consommateur actif'}, {value:'9', label:'Inconnu'}]} />}
+                            {isVisible('menopause_status') && <Field label="Statut Ménopausique" value={formData.menopause_status} onChange={v => set('menopause_status', v)} options={[{value:'0', label:'Non ménopausée'}, {value:'1', label:'Ménopausée'}, {value:'9', label:'Inconnu'}]} />}
+
+                            {/* Render custom dynamic fields for identity */}
+                            <AnimatePresence>
+                                {dynamicConfigs.filter(c => c.section === 'identity' && c.is_visible).map(c => {
+                                    if (c.depends_on_field && c.depends_on_value && (formData as any)[c.depends_on_field] !== c.depends_on_value) return null;
+                                    let opts = undefined;
+                                    if (c.type === 'select' && c.options) opts = c.options.split(',').map((o: string) => ({ value: o.trim(), label: o.trim() }));
+                                    return (
+                                        <motion.div key={c.field_id} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                            <Field label={c.label} value={dynamicData[c.field_id] || ''} onChange={v => setDynamicData(p => ({ ...p, [c.field_id]: v }))} type={c.type === 'date' ? 'text' : c.type} options={opts} />
+                                        </motion.div>
+                                    );
+                                })}
+                            </AnimatePresence>
                         </div>
-                    </div>
+                    </fieldset>
+                )}
+
+                {activeSection === 'clinical' && (
+                    <fieldset disabled={isDisabled('clinical')} className="portal-card p-6 bg-white border-slate-200 space-y-6 border-none outline-none disabled:bg-slate-50/30">
+                        <SectionHeader title="Bilan Clinique" icon={Stethoscope} badge={isDisabled('clinical') ? "Lecture Seule" : undefined} />
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                            {isVisible('incidence_date') && <Field label="Date Incidence" value={formData.incidence_date} onChange={v => set('incidence_date', v)} />}
+                            {isVisible('topo_code') && <Field label="Topographie" value={formData.topo_code} onChange={v => set('topo_code', v)} />}
+                            
+                            <AnimatePresence>
+                                {PAIRED_SITES.some(code => formData.topo_code?.startsWith(code)) && isVisible('laterality') && (
+                                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                        <Field label="Latéralité" value={formData.laterality} onChange={v => set('laterality', v)} options={[{value:'1', label:'Droite'}, {value:'2', label:'Gauche'}, {value:'3', label:'Unilatérale (NSP)'}, {value:'4', label:'Bilatérale'}]} />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {isVisible('basis_of_diagnosis') && (
+                                <Field label="Base du Diagnostic" value={formData.basis_of_diagnosis} onChange={v => {
+                                    set('basis_of_diagnosis', v);
+                                    if (v === '0') set('vital_status', 'D'); // DCO implies Dead
+                                }} options={dictOptions['BASIS']} />
+                            )}
+
+                            {isVisible('clinical_t') && <Field label="cT (T Clinique)" value={formData.clinical_t} onChange={v => set('clinical_t', v)} />}
+                            {isVisible('clinical_n') && <Field label="cN (N Clinique)" value={formData.clinical_n} onChange={v => set('clinical_n', v)} />}
+                            {isVisible('clinical_m') && <Field label="cM (M Clinique)" value={formData.clinical_m} onChange={v => set('clinical_m', v)} />}
+                            {isVisible('clinical_stage') && <Field label="Stade Clinique" value={formData.clinical_stage} onChange={v => set('clinical_stage', v)} />}
+                            {isVisible('source_type') && <Field label="Type de Source" value={formData.source_type} onChange={v => set('source_type', v)} options={[{value:'CL', label:'Clinique'}, {value:'AP', label:'Anapath'}, {value:'LB', label:'Labo'}, {value:'CO', label:'Certificat de Décès (DCO)'}]} />}
+                            {isVisible('hospital_name') && <Field label="Nom de l'Hôpital" value={formData.hospital_name} onChange={v => set('hospital_name', v)} />}
+                            {isVisible('department') && <Field label="Service Saisisseur" value={formData.department} onChange={v => set('department', v)} />}
+                            {isVisible('practitioner_name') && <Field label="Médecin Praticien" value={formData.practitioner_name} onChange={v => set('practitioner_name', v)} />}
+
+                            {/* Render custom dynamic fields for clinical */}
+                            <AnimatePresence>
+                                {dynamicConfigs.filter(c => c.section === 'clinical' && c.is_visible).map(c => {
+                                    if (c.depends_on_field && c.depends_on_value && (formData as any)[c.depends_on_field] !== c.depends_on_value) return null;
+                                    let opts = undefined;
+                                    if (c.type === 'select' && c.options) opts = c.options.split(',').map((o: string) => ({ value: o.trim(), label: o.trim() }));
+                                    return (
+                                        <motion.div key={c.field_id} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                            <Field label={c.label} value={dynamicData[c.field_id] || ''} onChange={v => setDynamicData(p => ({ ...p, [c.field_id]: v }))} type={c.type === 'date' ? 'text' : c.type} options={opts} />
+                                        </motion.div>
+                                    );
+                                })}
+                            </AnimatePresence>
+                        </div>
+                    </fieldset>
+                )}
+
+                {activeSection === 'anapath' && (
+                    <fieldset disabled={isDisabled('anapath')} className="portal-card p-6 bg-white border-slate-200 space-y-6 border-none outline-none disabled:bg-slate-50/30">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-3">
+                            <SectionHeader title="Anatomie Pathologique" icon={Microscope} badge={isDisabled('anapath') ? "Lecture Seule" : undefined} />
+                            
+                            {/* Tumor manager list */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tumeurs ({tumors.length}) :</span>
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    {tumors.map(t => (
+                                        <div key={t.id} className="flex items-center bg-slate-100 hover:bg-slate-200 rounded-lg p-0.5 transition-all">
+                                            <button 
+                                                type="button" 
+                                                onClick={() => switchActiveTumor(t.id)}
+                                                className={`px-2.5 py-0.5 rounded-md text-xs font-bold transition-all ${activeTumorId === t.id ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-600'}`}
+                                            >
+                                                {t.name} {t.morpho_code ? `(${t.morpho_code})` : ''}
+                                            </button>
+                                            {t.id > 1 && !isDisabled('anapath') && (
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => removeTumor(t.id)}
+                                                    className="px-1 text-slate-400 hover:text-red-500 transition-colors"
+                                                    title="Supprimer cette tumeur"
+                                                >
+                                                    ✕
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    {!isDisabled('anapath') && (
+                                        <button 
+                                            type="button" 
+                                            onClick={addMultipleTumor}
+                                            className="px-3 py-1 rounded-lg text-xs font-black bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors"
+                                        >
+                                            + Ajouter
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                            {isVisible('morpho_code') && <Field label="Morphologie" value={formData.morpho_code} onChange={v => set('morpho_code', v)} />}
+                            {isVisible('behaviour') && <Field label="Comportement" value={formData.behaviour} onChange={v => set('behaviour', v)} options={[{value:'3', label:'Malin'}]} />}
+                            {isVisible('grade') && <Field label="Grade" value={formData.grade} onChange={v => set('grade', v)} options={[{value:'9', label:'Inconnu'}]} />}
+                            {isVisible('path_t') && <Field label="pT (T Pathologique)" value={formData.path_t} onChange={v => set('path_t', v)} />}
+                            {isVisible('path_n') && <Field label="pN (N Pathologique)" value={formData.path_n} onChange={v => set('path_n', v)} />}
+                            {isVisible('path_m') && <Field label="pM (M Pathologique)" value={formData.path_m} onChange={v => set('path_m', v)} />}
+                            {isVisible('path_stage') && <Field label="Stade Pathologique" value={formData.path_stage} onChange={v => set('path_stage', v)} />}
+                            {isVisible('tumor_size') && <Field label="Taille Tumeur (mm)" value={formData.tumor_size} onChange={v => set('tumor_size', v)} type="number" />}
+                            {isVisible('report_number') && <Field label="Numéro CR Anapath" value={formData.report_number} onChange={v => set('report_number', v)} />}
+                            {isVisible('nodes_pos') && <Field label="Ganglions Positifs" value={formData.nodes_pos} onChange={v => set('nodes_pos', v)} type="number" />}
+                            
+                            {/* Render custom dynamic fields for anapath */}
+                            <AnimatePresence>
+                                {dynamicConfigs.filter(c => c.section === 'anapath' && c.is_visible).map(c => {
+                                    if (c.depends_on_field && c.depends_on_value && (formData as any)[c.depends_on_field] !== c.depends_on_value) return null;
+                                    let opts = undefined;
+                                    if (c.type === 'select' && c.options) opts = c.options.split(',').map((o: string) => ({ value: o.trim(), label: o.trim() }));
+                                    return (
+                                        <motion.div key={c.field_id} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                            <Field label={c.label} value={dynamicData[c.field_id] || ''} onChange={v => setDynamicData(p => ({ ...p, [c.field_id]: v }))} type={c.type === 'date' ? 'text' : c.type} options={opts} />
+                                        </motion.div>
+                                    );
+                                })}
+                            </AnimatePresence>
+                        </div>
+                    </fieldset>
+                )}
+
+                {activeSection === 'labo' && (
+                    <fieldset disabled={isDisabled('labo')} className="portal-card p-6 bg-white border-slate-200 space-y-6 border-none outline-none disabled:bg-slate-50/30">
+                        <SectionHeader title="Laboratoire" icon={FlaskConical} badge={isDisabled('labo') ? "Lecture Seule" : undefined} />
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                            {isVisible('psa') && <Field label="PSA" value={formData.psa} onChange={v => set('psa', v)} type="number" />}
+                            {isVisible('cea') && <Field label="CEA" value={formData.cea} onChange={v => set('cea', v)} type="number" />}
+                            {isVisible('ca125') && <Field label="CA 125" value={formData.ca125} onChange={v => set('ca125', v)} type="number" />}
+                            {isVisible('ca199') && <Field label="CA 19-9" value={formData.ca199} onChange={v => set('ca199', v)} type="number" />}
+                            {isVisible('afp') && <Field label="AFP" value={formData.afp} onChange={v => set('afp', v)} type="number" />}
+                            {isVisible('hcg') && <Field label="HCG" value={formData.hcg} onChange={v => set('hcg', v)} type="number" />}
+                            {isVisible('hemoglobin') && <Field label="Hémoglobine" value={formData.hemoglobin} onChange={v => set('hemoglobin', v)} type="number" />}
+                            {isVisible('wbc') && <Field label="Globules Blancs" value={formData.wbc} onChange={v => set('wbc', v)} type="number" />}
+                            {isVisible('platelets') && <Field label="Plaquettes" value={formData.platelets} onChange={v => set('platelets', v)} type="number" />}
+                            {isVisible('ldh') && <Field label="LDH" value={formData.ldh} onChange={v => set('ldh', v)} type="number" />}
+                            {isVisible('alp') && <Field label="Phosphatase Alcaline" value={formData.alp} onChange={v => set('alp', v)} type="number" />}
+                            {isVisible('labo_date') && <Field label="Date Labo" value={formData.labo_date} onChange={v => set('labo_date', v)} />}
+                            {isVisible('her2') && <Field label="HER2" value={formData.her2} onChange={v => set('her2', v)} options={[{value:'0', label:'Négatif'}, {value:'1', label:'1+'}, {value:'2', label:'2+'}, {value:'3', label:'3+'}, {value:'U', label:'Inconnu'}]} />}
+                            {isVisible('er_percent') && <Field label="ER (%)" value={formData.er_percent} onChange={v => set('er_percent', v)} type="number" />}
+                            {isVisible('pr_percent') && <Field label="PR (%)" value={formData.pr_percent} onChange={v => set('pr_percent', v)} type="number" />}
+                            {isVisible('ki67') && <Field label="Ki-67 (%)" value={formData.ki67} onChange={v => set('ki67', v)} type="number" />}
+                            {isVisible('egfr') && <Field label="EGFR Mutation" value={formData.egfr} onChange={v => set('egfr', v)} options={[{value:'M', label:'Muté'}, {value:'W', label:'Sauvage'}, {value:'U', label:'Inconnu'}]} />}
+                            {isVisible('alk') && <Field label="ALK Mutation" value={formData.alk} onChange={v => set('alk', v)} options={[{value:'P', label:'Positif'}, {value:'N', label:'Négatif'}, {value:'U', label:'Inconnu'}]} />}
+                            {isVisible('braf') && <Field label="BRAF Mutation" value={formData.braf} onChange={v => set('braf', v)} options={[{value:'M', label:'Muté'}, {value:'W', label:'Sauvage'}, {value:'U', label:'Inconnu'}]} />}
+                            {isVisible('pdl1') && <Field label="PD-L1 Status" value={formData.pdl1} onChange={v => set('pdl1', v)} options={[{value:'P', label:'Positif'}, {value:'N', label:'Négatif'}, {value:'U', label:'Inconnu'}]} />}
+
+                            {/* Render custom dynamic fields for labo */}
+                            <AnimatePresence>
+                                {dynamicConfigs.filter(c => c.section === 'labo' && c.is_visible).map(c => {
+                                    if (c.depends_on_field && c.depends_on_value && (formData as any)[c.depends_on_field] !== c.depends_on_value) return null;
+                                    let opts = undefined;
+                                    if (c.type === 'select' && c.options) opts = c.options.split(',').map((o: string) => ({ value: o.trim(), label: o.trim() }));
+                                    return (
+                                        <motion.div key={c.field_id} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                            <Field label={c.label} value={dynamicData[c.field_id] || ''} onChange={v => setDynamicData(p => ({ ...p, [c.field_id]: v }))} type={c.type === 'date' ? 'text' : c.type} options={opts} />
+                                        </motion.div>
+                                    );
+                                })}
+                            </AnimatePresence>
+                        </div>
+                    </fieldset>
+                )}
+
+                {activeSection === 'admin' && (
+                    <fieldset disabled={isDisabled('admin')} className="portal-card p-6 bg-white border-slate-200 space-y-6 border-none outline-none disabled:bg-slate-50/30">
+                        <SectionHeader title="Administration" icon={Shield} badge={isDisabled('admin') ? "Lecture Seule" : undefined} />
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                            {isVisible('registration_number') && <Field label="N° Enregistrement" value={formData.registration_number} onChange={v => set('registration_number', v)} />}
+                            {isVisible('record_status') && <Field label="Statut" value={formData.record_status} onChange={v => set('record_status', v)} options={[{value:'0', label:'Attente'}, {value:'1', label:'Validé'}]} />}
+                            {isVisible('check_status') && <Field label="Vérification IARC" value={formData.check_status} onChange={v => set('check_status', v)} options={[{value:'OK', label:'Conforme'}]} />}
+                            {isVisible('icd10_code') && <Field label="Code CIM-10" value={formData.icd10_code} onChange={v => set('icd10_code', v)} />}
+                            {isVisible('treatment_1') && <Field label="Traitement Principal" value={formData.treatment_1} onChange={v => set('treatment_1', v)} options={[{value:'0', label:'Chirurgie'}, {value:'1', label:'Chimiothérapie'}, {value:'2', label:'Radiothérapie'}, {value:'3', label:'Hormonothérapie'}, {value:'9', label:'Inconnu'}]} />}
+                            {isVisible('treatment_2') && <Field label="Traitement Secondaire" value={formData.treatment_2} onChange={v => set('treatment_2', v)} />}
+                            {isVisible('mp_code') && <Field label="Code Multiples" value={formData.mp_code} onChange={v => set('mp_code', v)} />}
+
+                            {/* Render custom dynamic fields for admin */}
+                            <AnimatePresence>
+                                {dynamicConfigs.filter(c => c.section === 'admin' && c.is_visible).map(c => {
+                                    if (c.depends_on_field && c.depends_on_value && (formData as any)[c.depends_on_field] !== c.depends_on_value) return null;
+                                    let opts = undefined;
+                                    if (c.type === 'select' && c.options) opts = c.options.split(',').map((o: string) => ({ value: o.trim(), label: o.trim() }));
+                                    return (
+                                        <motion.div key={c.field_id} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                            <Field label={c.label} value={dynamicData[c.field_id] || ''} onChange={v => setDynamicData(p => ({ ...p, [c.field_id]: v }))} type={c.type === 'date' ? 'text' : c.type} options={opts} />
+                                        </motion.div>
+                                    );
+                                })}
+                            </AnimatePresence>
+                        </div>
+                    </fieldset>
                 )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                {/* ═══ PERSISTENT SIDEBAR NAVIGATION (ORGANIC PORTALS) ═══ */}
-                <aside className="lg:col-span-2 flex flex-col gap-6 sticky top-10 items-center py-4">
-                    {(role === 'medecin' || role === 'admin') && (
-                        <motion.button type="button" onClick={() => setActiveSection('identity')} className="relative w-20 h-20 flex flex-col items-center justify-center transition-all group" animate={{ borderRadius: ["40% 60% 70% 30% / 40% 50% 60% 50%", "60% 40% 30% 70% / 60% 30% 70% 40%", "40% 60% 70% 30% / 40% 50% 60% 50%"], scale: activeSection === 'identity' ? 1.1 : 1 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }}>
-                            <div className={`absolute inset-0 bg-gradient-to-br from-sky-500/80 to-indigo-600/80 backdrop-blur-xl border border-white/20 shadow-lg ${activeSection === 'identity' ? 'ring-4 ring-sky-500/40 shadow-[0_0_30px_rgba(14,165,233,0.4)]' : 'opacity-40 hover:opacity-100'}`} style={{ borderRadius: 'inherit' }} />
-                            <div className="relative z-10 flex flex-col items-center text-white"><Database size={20} /><span className="text-[7px] font-black uppercase mt-1">ID</span></div>
-                            <div className="absolute left-full ml-4 px-3 py-1 bg-slate-800 text-white text-[9px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">Identité</div>
-                        </motion.button>
-                    )}
-                    {(role === 'medecin' || role === 'admin') && (
-                        <motion.button type="button" onClick={() => setActiveSection('clinical')} className="relative w-20 h-20 flex flex-col items-center justify-center transition-all group" animate={{ borderRadius: ["50% 50% 40% 60% / 40% 60% 50% 50%", "40% 60% 60% 40% / 60% 40% 40% 60%", "50% 50% 40% 60% / 40% 60% 50% 50%"], scale: activeSection === 'clinical' ? 1.1 : 1 }} transition={{ duration: 12, repeat: Infinity, ease: "linear" }}>
-                            <div className={`absolute inset-0 bg-gradient-to-br from-rose-500/80 to-orange-600/80 backdrop-blur-xl border border-white/20 shadow-lg ${activeSection === 'clinical' ? 'ring-4 ring-rose-500/40 shadow-[0_0_30px_rgba(244,63,94,0.4)]' : 'opacity-40 hover:opacity-100'}`} style={{ borderRadius: 'inherit' }} />
-                            <div className="relative z-10 flex flex-col items-center text-white"><Stethoscope size={20} /><span className="text-[7px] font-black uppercase mt-1">CLI</span></div>
-                            <div className="absolute left-full ml-4 px-3 py-1 bg-slate-800 text-white text-[9px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">Clinique</div>
-                        </motion.button>
-                    )}
-                    {(role === 'anapate' || role === 'admin') && (
-                        <motion.button type="button" onClick={() => setActiveSection('anapath')} className="relative w-20 h-20 flex flex-col items-center justify-center transition-all group" animate={{ borderRadius: ["30% 70% 50% 50% / 50% 50% 70% 30%", "70% 30% 50% 50% / 50% 50% 30% 70%", "30% 70% 50% 50% / 50% 50% 70% 30%"], scale: activeSection === 'anapath' ? 1.1 : 1 }} transition={{ duration: 14, repeat: Infinity, ease: "linear" }}>
-                            <div className={`absolute inset-0 bg-gradient-to-br from-emerald-500/80 to-teal-600/80 backdrop-blur-xl border border-white/20 shadow-lg ${activeSection === 'anapath' ? 'ring-4 ring-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.4)]' : 'opacity-40 hover:opacity-100'}`} style={{ borderRadius: 'inherit' }} />
-                            <div className="relative z-10 flex flex-col items-center text-white"><Microscope size={20} /><span className="text-[7px] font-black uppercase mt-1">ANA</span></div>
-                            <div className="absolute left-full ml-4 px-3 py-1 bg-slate-800 text-white text-[9px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">Anapath</div>
-                        </motion.button>
-                    )}
-                    {(role === 'labo' || role === 'admin') && (
-                        <motion.button type="button" onClick={() => setActiveSection('labo')} className="relative w-20 h-20 flex flex-col items-center justify-center transition-all group" animate={{ borderRadius: ["60% 40% 50% 50% / 50% 50% 40% 60%", "40% 60% 50% 50% / 50% 50% 60% 40%", "60% 40% 50% 50% / 50% 50% 40% 60%"], scale: activeSection === 'labo' ? 1.1 : 1 }} transition={{ duration: 11, repeat: Infinity, ease: "linear" }}>
-                            <div className={`absolute inset-0 bg-gradient-to-br from-amber-500/80 to-yellow-600/80 backdrop-blur-xl border border-white/20 shadow-lg ${activeSection === 'labo' ? 'ring-4 ring-amber-500/40 shadow-[0_0_30px_rgba(245,158,11,0.4)]' : 'opacity-40 hover:opacity-100'}`} style={{ borderRadius: 'inherit' }} />
-                            <div className="relative z-10 flex flex-col items-center text-white"><FlaskConical size={20} /><span className="text-[7px] font-black uppercase mt-1">BIO</span></div>
-                            <div className="absolute left-full ml-4 px-3 py-1 bg-slate-800 text-white text-[9px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">Laboratoire</div>
-                        </motion.button>
-                    )}
-                    {role === 'admin' && (
-                        <motion.button type="button" onClick={() => setActiveSection('admin')} className="relative w-20 h-20 flex flex-col items-center justify-center transition-all group" animate={{ borderRadius: ["45% 55% 65% 35% / 55% 45% 35% 65%", "55% 45% 35% 65% / 45% 55% 65% 35%", "45% 55% 65% 35% / 55% 45% 35% 65%"], scale: activeSection === 'admin' ? 1.1 : 1 }} transition={{ duration: 13, repeat: Infinity, ease: "linear" }}>
-                            <div className={`absolute inset-0 bg-gradient-to-br from-violet-500/80 to-fuchsia-600/80 backdrop-blur-xl border border-white/20 shadow-lg ${activeSection === 'admin' ? 'ring-4 ring-violet-500/40 shadow-[0_0_30px_rgba(139,92,246,0.4)]' : 'opacity-40 hover:opacity-100'}`} style={{ borderRadius: 'inherit' }} />
-                            <div className="relative z-10 flex flex-col items-center text-white"><Shield size={20} /><span className="text-[7px] font-black uppercase mt-1">ADM</span></div>
-                            <div className="absolute left-full ml-4 px-3 py-1 bg-slate-800 text-white text-[9px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">Administration</div>
-                        </motion.button>
-                    )}
-                </aside>
-
-                {/* ═══ MAIN DYNAMIC CONTENT SPACE ═══ */}
-                <main className="lg:col-span-10 space-y-6">
-                    <AnimatePresence mode="wait">
-                        <motion.div key={activeSection} initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 1.02, y: -10 }} transition={{ duration: 0.3 }} className="space-y-6">
-
-                            {/* IDENTITY SECTION */}
-                            {(role === 'medecin' || role === 'admin') && activeSection === 'identity' && (
-                                <motion.div className="space-y-6" animate={{ y: [0, -5, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}>
-                                    <div className="glass-card p-5">
-                                        <SectionHeader title="Identification" icon={User} badge="Requis" />
-                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                                            <Field label="NID" value={formData.nid} onChange={v => set('nid', v)} placeholder="Ex: 175312009231..." />
-                                            <Field label="Nom" value={formData.last_name} onChange={v => set('last_name', v)} placeholder="Boudiaf" />
-                                            <Field label="Prénom" value={formData.first_name} onChange={v => set('first_name', v)} placeholder="Mohammed" />
-                                            <Field label="Nom de jeune fille" value={formData.maiden_name} onChange={v => set('maiden_name', v)} placeholder="—" />
-                                            <Field label="Sexe" value={formData.gender} onChange={v => set('gender', v)} options={[{ value: '1', label: '♂' }, { value: '2', label: '♀' }, { value: '9', label: '?' }]} auto={autoFlags.gender} />
-                                            <Field label="Date Naissance" value={formData.birth_date} onChange={v => set('birth_date', v)} placeholder="JJ/MM/AAAA" />
-                                            <Field label="Lieu de Naissance" value={formData.birth_place} onChange={v => set('birth_place', v)} placeholder="W. d'Alger" />
-                                        </div>
-                                    </div>
-                                    <div className="glass-card p-5">
-                                        <SectionHeader title="Contact & État Matrimonial" icon={Phone} />
-                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                                            <Field label="Téléphone" value={formData.phone} onChange={v => set('phone', v)} placeholder="0555 XX XX XX" />
-                                            <Field label="Wilaya" value={formData.wilaya} onChange={v => set('wilaya', v)} options={WILAYA_OPTIONS} />
-                                            <Field label="État Civil" value={formData.marital_status} onChange={v => set('marital_status', v)} options={[{ value: 'S', label: 'Célib.' }, { value: 'M', label: 'Marié' }, { value: 'D', label: 'Divorcé(e)' }, { value: 'W', label: 'Veuf/Veuve' }, { value: 'U', label: 'Inconnu' }]} />
-                                        </div>
-                                    </div>
-                                    <div className="glass-card p-5">
-                                        <SectionHeader title="Statut Vital" icon={Activity} />
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                            <Field label="État" value={formData.vital_status} onChange={v => set('vital_status', v)} options={[{ value: 'A', label: 'Actif / Vivant' }, { value: 'D', label: 'Décédé' }, { value: 'U', label: 'Inconnu' }]} />
-                                            {isDead && <Field label="Date Décès" value={formData.date_of_death} onChange={v => set('date_of_death', v)} placeholder="JJ/MM/AAAA" />}
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {/* CLINICAL SECTION */}
-                            {(role === 'medecin' || role === 'admin') && activeSection === 'clinical' && (
-                                <motion.div className="space-y-6" animate={{ y: [0, -4, 0] }} transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}>
-                                    <div className="glass-card p-5">
-                                        <SectionHeader title="Détails Tumeur" icon={Stethoscope} />
-                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                                            <Field label="Date Incidence" value={formData.incidence_date} onChange={v => set('incidence_date', v)} placeholder="JJ/MM/AAAA" />
-                                            <Field label="Topo" value={formData.topo_code} onChange={v => set('topo_code', v)} placeholder="C34.1" />
-                                            <Field label="Base Diagnostic" value={formData.basis_of_diagnosis} onChange={v => set('basis_of_diagnosis', v)} options={dictOptions['BASIS']} />
-                                            <Field label="cT" value={formData.clinical_t} onChange={v => set('clinical_t', v)} options={T_OPTIONS} />
-                                            <Field label="cN" value={formData.clinical_n} onChange={v => set('clinical_n', v)} options={N_OPTIONS} />
-                                            <Field label="cM" value={formData.clinical_m} onChange={v => set('clinical_m', v)} options={M_OPTIONS} />
-                                            <Field label="Stade" value={formData.clinical_stage} onChange={v => set('clinical_stage', v)} options={STAGE_OPTIONS} />
-                                        </div>
-                                    </div>
-                                    <div className="glass-card p-5">
-                                        <SectionHeader title="Antécédents & Source" icon={Activity} />
-                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                                            <Field label="Performance" value={formData.performance_status} onChange={v => set('performance_status', v)} options={[
-                                                { value: '0', label: '0 – Asymptomatique' },
-                                                { value: '1', label: '1 – Symptomatique, ambulatoire' },
-                                                { value: '2', label: '2 – Alité < 50% du temps' },
-                                                { value: '3', label: '3 – Alité > 50% du temps' },
-                                                { value: '4', label: '4 – Confiné au lit' },
-                                                { value: '9', label: 'Inconnu' }
-                                            ]} />
-                                            <Field label="Hôpital" value={formData.hospital_name} onChange={v => set('hospital_name', v)} placeholder="CHU Mustapha" />
-                                            <Field label="Notes" value={formData.clinical_text} onChange={v => set('clinical_text', v)} placeholder="Résumé clinique…" full />
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {/* ANAPATH SECTION */}
-                            {(role === 'anapate' || role === 'admin') && activeSection === 'anapath' && (
-                                <motion.div className="space-y-6" animate={{ y: [0, -6, 0] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}>
-                                    <div className="glass-card p-5">
-                                        <SectionHeader title="Examen Morphologique" icon={Microscope} />
-                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                                            <Field label="Morpho" value={formData.morpho_code} onChange={v => set('morpho_code', v)} placeholder="8070/3" auto={autoFlags.morpho_code} />
-                                            <Field label="Comportement" value={formData.behaviour} onChange={v => set('behaviour', v)} options={dictOptions['BEHAV'] || [{ value: '0', label: '/0 Bénin' }, { value: '1', label: '/1 Incertain' }, { value: '2', label: 'In situ' }, { value: '3', label: 'Malin' }]} auto={autoFlags.behaviour} />
-                                            <Field label="Grade" value={formData.grade} onChange={v => set('grade', v)} options={dictOptions['GRADE'] || [{ value: '1', label: 'G1 – Bien diff.' }, { value: '2', label: 'G2 – Modéré' }, { value: '3', label: 'G3 – Peu diff.' }, { value: '4', label: 'G4 – Indifférencié' }, { value: '9', label: '9 – Non déterminé' }]} />
-                                            <Field label="pT" value={formData.path_t} onChange={v => set('path_t', v)} options={T_OPTIONS} />
-                                            <Field label="pN" value={formData.path_n} onChange={v => set('path_n', v)} options={N_OPTIONS} />
-                                            <Field label="pM" value={formData.path_m} onChange={v => set('path_m', v)} options={M_OPTIONS} />
-                                            <Field label="Nbre Ganglions +" value={formData.nodes_pos} onChange={v => set('nodes_pos', v)} type="number" />
-                                            {isPaired && <div className="col-span-full p-2 bg-sky-500/10 border border-sky-500/20 rounded text-[10px] text-sky-400 font-bold uppercase tracking-wider text-center">Organe Pair détecté — Spécifier la latéralité</div>}
-                                        </div>
-                                    </div>
-                                    <div className="glass-card p-5">
-                                        <SectionHeader title="Rapport Anapath" icon={FileText} />
-                                        <Field label="Rapport" value={formData.pathology_text} onChange={v => set('pathology_text', v)} placeholder="Pièce de lobectomie supérieure droite. Tumeur de 32mm…" full />
-                                    </div>
-                                    <ReadOnlyCard
-                                        title="Résumé Clinique"
-                                        icon={Stethoscope}
-                                        data={{
-                                            'Site': formData.topo_code || 'Non spécifié',
-                                            'Diagnostic': dictOptions['BASIS']?.find(o => o.value === formData.basis_of_diagnosis)?.label || 'Inconnu',
-                                            'Stade Clinique': formData.clinical_stage || 'N/A'
-                                        }}
-                                    />
-                                </motion.div>
-                            )}
-
-                            {/* LABO SECTION */}
-                            {(role === 'labo' || role === 'admin') && activeSection === 'labo' && (
-                                <motion.div className="space-y-6" animate={{ y: [0, -5, 0] }} transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}>
-                                    <div className="glass-card p-5">
-                                        <SectionHeader title="Biochimie & Marqueurs" icon={FlaskConical} />
-                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                                            <Field label="Date Prélèvement" value={formData.labo_date} onChange={v => set('labo_date', v)} placeholder="JJ/MM/AAAA" />
-                                            <Field label="PSA (ng/mL)" value={formData.psa} onChange={v => set('psa', v)} placeholder="4.0" type="number" />
-                                            <Field label="CEA (ng/mL)" value={formData.cea} onChange={v => set('cea', v)} placeholder="5.0" type="number" />
-                                            <Field label="CA-125 (U/mL)" value={formData.ca125} onChange={v => set('ca125', v)} placeholder="35" type="number" />
-                                            <Field label="CA-19.9 (U/mL)" value={formData.ca199} onChange={v => set('ca199', v)} placeholder="37" type="number" />
-                                            <Field label="AFP (ng/mL)" value={formData.afp} onChange={v => set('afp', v)} placeholder="10" type="number" />
-                                            <Field label="β-HCG (mUI/mL)" value={formData.hcg} onChange={v => set('hcg', v)} placeholder="5" type="number" />
-                                        </div>
-                                    </div>
-                                    <div className="glass-card p-5">
-                                        <SectionHeader title="Hématologie & Biochimie" icon={FlaskConical} badge="Labo" />
-                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                                            <Field label="Hémoglobine (g/dL)" value={formData.hemoglobin} onChange={v => set('hemoglobin', v)} placeholder="14.0" type="number" />
-                                            <Field label="Leucocytes (×10³/µL)" value={formData.wbc} onChange={v => set('wbc', v)} placeholder="7.5" type="number" />
-                                            <Field label="Plaquettes (×10³/µL)" value={formData.platelets} onChange={v => set('platelets', v)} placeholder="250" type="number" />
-                                            <Field label="LDH (U/L)" value={formData.ldh} onChange={v => set('ldh', v)} placeholder="250" type="number" />
-                                            <Field label="PAL / ALP (U/L)" value={formData.alp} onChange={v => set('alp', v)} placeholder="120" type="number" />
-                                            <Field label="Notes Laboratoire" value={formData.labo_notes} onChange={v => set('labo_notes', v)} placeholder="Observations, commentaires…" full />
-                                        </div>
-                                    </div>
-                                    <div className="glass-card p-5 mt-6 border-t-4 border-amber-500/50">
-                                        <SectionHeader title="Biologie Moléculaire & IHC" icon={FlaskConical} badge="Biomarkers" />
-                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                            <Field label="Statut HER2" value={formData.her2} onChange={v => set('her2', v)} options={[{ value: '', label: 'Non testé' }, { value: '0', label: '0 (Négatif)' }, { value: '1+', label: '1+ (Négatif)' }, { value: '2+', label: '2+ (Équivoque)' }, { value: '3+', label: '3+ (Positif)' }]} />
-                                            <Field label="RE (Œstrogène) %" value={formData.er_percent} onChange={v => set('er_percent', v)} placeholder="80" type="number" />
-                                            <Field label="RP (Progestérone) %" value={formData.pr_percent} onChange={v => set('pr_percent', v)} placeholder="15" type="number" />
-                                            <Field label="Index Ki-67 (%)" value={formData.ki67} onChange={v => set('ki67', v)} placeholder="40" type="number" />
-                                            <Field label="Mutation EGFR" value={formData.egfr} onChange={v => set('egfr', v)} options={[{ value: '', label: 'Non testé' }, { value: 'Wild-Type', label: 'Sauvage (Wild-Type)' }, { value: 'Muté (Exon 19)', label: 'Muté (Exon 19)' }, { value: 'Muté (L858R)', label: 'Muté (L858R)' }]} />
-                                            <Field label="Abernance ALK" value={formData.alk} onChange={v => set('alk', v)} options={[{ value: '', label: 'Non testé' }, { value: 'Négatif', label: 'Négatif' }, { value: 'Réarrangement', label: 'Réarrangement Positif' }]} />
-                                            <Field label="Mutation BRAF" value={formData.braf} onChange={v => set('braf', v)} options={[{ value: '', label: 'Non testé' }, { value: 'Wild-Type', label: 'Sauvage (Wild-Type)' }, { value: 'V600E', label: 'Muté V600E' }]} />
-                                            <Field label="PD-L1 (TPS/CPS)" value={formData.pdl1} onChange={v => set('pdl1', v)} placeholder="Ex: TPS > 50%" />
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {/* ADMIN SECTION */}
-                            {role === 'admin' && activeSection === 'admin' && (
-                                <motion.div className="glass-card p-5" animate={{ y: [0, -4, 0] }} transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}>
-                                    <SectionHeader title="Validation Finale" icon={Shield} />
-                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                                        <Field label="N° Reg" value={formData.registration_number} onChange={v => set('registration_number', v)} placeholder="RC-2024-XXXXX" />
-                                        <Field label="Statut" value={formData.record_status} onChange={v => set('record_status', v)} options={[{ value: '0', label: 'Attente' }, { value: '1', label: 'Validé' }, { value: '2', label: 'Archivé' }]} />
-                                        <Field label="CIM-10" value={formData.icd10_code} onChange={v => set('icd10_code', v)} placeholder="C34.1" />
-                                        <Field label="Code MP (Multiples)" value={formData.mp_code} onChange={v => set('mp_code', v)} placeholder="00" />
-                                        <Field label="Traitement Principal" value={formData.treatment_1} onChange={v => set('treatment_1', v)}
-                                            options={dictOptions['TREAT'] || [{ value: '0', label: 'Aucun' }, { value: '1', label: 'Chirurgie' }, { value: '2', label: 'Radiothérapie' }, { value: '3', label: 'Chimiothérapie' }, { value: '4', label: 'Hormonothérapie' }, { value: '5', label: 'Immunothérapie' }, { value: '7', label: 'Combinaison' }, { value: '9', label: 'Inconnu' }]} />
-                                        <Field label="Traitement Secondaire" value={formData.treatment_2} onChange={v => set('treatment_2', v)}
-                                            options={[{ value: '', label: '—' }, { value: '1', label: 'Chirurgie' }, { value: '2', label: 'Radiothérapie' }, { value: '3', label: 'Chimiothérapie' }, { value: '5', label: 'Immunothérapie' }]} />
-                                        <Field label="Check IARC" value={formData.check_status} onChange={v => set('check_status', v)}
-                                            options={[{ value: 'Unchecked', label: 'Non vérifié' }, { value: 'OK', label: 'Conforme' }, { value: 'Rare', label: 'Rare' }, { value: 'Invalid', label: 'Invalide' }]} />
-                                    </div>
-                                </motion.div>
-                            )}
-                        </motion.div>
-                    </AnimatePresence>
-
-                    {/* Validation Summary */}
-                    {(vResults.errors.length > 0 || vResults.warnings.length > 0) && (
-                        <div className="glass-card p-4 bg-rose-500/5 border-rose-500/10 space-y-2">
-                            {vResults.errors.map((e, i) => <div key={i} className="p-2 bg-rose-500/10 border border-rose-500/20 rounded text-rose-400 text-xs"><strong>❌</strong> {e}</div>)}
-                            {vResults.warnings.map((w, i) => <div key={i} className="p-2 bg-amber-500/10 border border-amber-500/20 rounded text-amber-400 text-xs"><strong>⚠</strong> {w}</div>)}
-                        </div>
-                    )}
-
-                    {/* Bottom Actions */}
-                    <div className="flex justify-between items-center bg-black/40 p-4 border border-white/5 rounded-2xl glass-card">
-                        <button type="button" onClick={() => {
-                            const order: ("identity" | "clinical" | "anapath" | "labo" | "admin")[] = ['identity', 'clinical', 'anapath', 'labo', 'admin'];
-                            const idx = order.indexOf(activeSection);
-                            if (idx > 0) setActiveSection(order[idx - 1]);
-                        }} className={`px-5 py-2 text-slate-400 hover:text-white transition-colors font-bold text-xs ${activeSection === 'identity' ? 'opacity-0 pointer-events-none' : ''}`}>
-                            ← Précédent
-                        </button>
-                        <div className="flex items-center gap-4">
-                            {isIdentityMissing && <p className="text-[10px] text-rose-400 font-bold animate-pulse">Identité incomplète</p>}
-                            <button
-                                type="submit"
-                                disabled={loading || vResults.errors.length > 0 || isIdentityMissing}
-                                className={`px-8 py-3 rounded-xl font-bold transition-all shadow-lg flex items-center gap-2 ${loading || vResults.errors.length > 0 || isIdentityMissing ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-sky-500 hover:bg-sky-400 text-white shadow-sky-500/20'}`}
-                            >
-                                {loading ? 'Traitement...' : role === 'admin' ? 'Valider le Dossier' : 'Enregistrer'}
-                            </button>
-                        </div>
-                    </div>
-
-                </main>
+            <div className="flex justify-end pt-4">
+                <button type="submit" className="px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 transition-all active:scale-95">
+                    Enregistrer le Dossier
+                </button>
             </div>
         </form>
     );

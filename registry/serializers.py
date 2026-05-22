@@ -4,8 +4,24 @@ from .models import (
     Patient, Tumor, Source, Wilaya, Commune, IcdO3, Icd10,
     MedicalHistory, Pharmacovigilance, PatientRevision, MergedRecord,
     Biomarker, MedicalDictionary, ToxicityCriteria, UserProfile,
-    HabitQuestionnaire, DynamicFormConfig
+    HabitQuestionnaire, DynamicFormConfig, PersonalizedMap
 )
+
+class PersonalizedMapSerializer(serializers.ModelSerializer):
+    wilaya_codes = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Wilaya.objects.all(), source='wilayas'
+    )
+    wilaya_names = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PersonalizedMap
+        fields = ['id', 'name', 'user', 'wilaya_codes', 'wilaya_names', 'zones', 'created_at']
+        extra_kwargs = {
+            'user': {'read_only': True}
+        }
+
+    def get_wilaya_names(self, obj):
+        return [w.name for w in obj.wilayas.all()]
 
 class CommuneSerializer(serializers.ModelSerializer):
     class Meta:
@@ -96,13 +112,19 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer()
+    password = serializers.CharField(write_only=True, required=False)
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile', 'is_staff']
+        fields = ['id', 'username', 'password', 'email', 'first_name', 'last_name', 'profile', 'is_staff']
 
     def create(self, validated_data):
-        profile_data = validated_data.pop('profile')
+        profile_data = validated_data.pop('profile', {})
+        password = validated_data.pop('password', None)
         user = User.objects.create_user(**validated_data)
+        if password:
+            user.set_password(password)
+            user.save()
         UserProfile.objects.create(user=user, **profile_data)
         return user
 

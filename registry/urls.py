@@ -7,7 +7,8 @@ from .views import (
     CommuneViewSet, IcdO3ViewSet, Icd10ViewSet, MedicalDictionaryViewSet,
     ToxicityCriteriaViewSet, UserViewSet, MeView, HabitQuestionnaireViewSet,
     DynamicFormConfigViewSet, SystemStudioView, AnalysisView,
-    ValidationView, PersonSearchView
+    ValidationView, PersonSearchView, PersonalizedMapViewSet,
+    WilayaStatsView, DataImportPreviewView, DataImportProcessView
 )
 from .tokens import MyTokenObtainPairView
 from rest_framework_simplejwt.views import (
@@ -30,15 +31,19 @@ router.register(r'toxicity', ToxicityCriteriaViewSet)
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'habits', HabitQuestionnaireViewSet)
 router.register(r'dynamic-form-config', DynamicFormConfigViewSet)
+router.register(r'personalized-maps', PersonalizedMapViewSet, basename='personalized-maps')
 
 urlpatterns = [
     path('', include(router.urls)),
     path('system-studio/', SystemStudioView.as_view(), name='system-studio'),
     path('analysis/stats/', AnalysisView.as_view(), name='analysis-stats'),
+    path('analysis/wilaya-stats/', WilayaStatsView.as_view(), name='wilaya-stats'),
     path('validation/check/', ValidationView.as_view(), name='validation-check'),
     path('person/search/', PersonSearchView.as_view(), name='person-search'),
     path('mia/extract-voice/', MiaVoiceExtractView.as_view(), name='mia-extract-voice'),
     path('mia/chat/', MiaChatView.as_view(), name='mia-chat'),
+    path('import/preview/', DataImportPreviewView.as_view(), name='import-preview'),
+    path('import/process/', DataImportProcessView.as_view(), name='import-process'),
     path('auth/login/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/me/', MeView.as_view(), name='auth-me'),

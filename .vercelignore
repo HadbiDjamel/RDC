@@ -1,0 +1,28 @@
+# Dependency directories
+node_modules/
+frontend/node_modules/
+backend/venv/
+venv/
+.venv/
+
+# Tauri build artifacts (The 4.2GB culprit)
+**/src-tauri/target/
+frontend/src-tauri/target/
+src-tauri/target/
+
+# Build outputs
+dist/
+build/
+frontend/dist/
+
+# Databases and logs
+*.sqlite3
+*.log
+
+# Vercel and Git
+.vercel/
+.git/
+.vscode/
+
+# Temp files
+tmp/

@@ -38,3 +38,4 @@ src-tauri/target/
 
 # Windows
 Thumbs.db
+.vercel

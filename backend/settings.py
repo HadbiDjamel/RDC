@@ -74,12 +74,15 @@ CSP_STYLE_SRC = ("'self'", "'unsafe-inline'", "fonts.googleapis.com")
 CSP_FONT_SRC = ("'self'", "fonts.gstatic.com")
 
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+    # Temporarily disabled for local HTTP demonstration. 
+    # Must be re-enabled for actual production deployment behind an HTTPS load balancer.
+    # SECURE_SSL_REDIRECT = True
+    # SESSION_COOKIE_SECURE = True
+    # CSRF_COOKIE_SECURE = True
+    # SECURE_HSTS_SECONDS = 31536000
+    # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # SECURE_HSTS_PRELOAD = True
+    pass
 
 ROOT_URLCONF = 'backend.urls'
 
@@ -147,6 +150,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

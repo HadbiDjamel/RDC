@@ -37,7 +37,7 @@ class Command(BaseCommand):
 
             nid = f"{random.randint(10, 48)}{random.randint(10, 99)}{random.randint(10, 12)}{random.randint(100000000, 999999999)}"
 
-            incidence_date = datetime.date(random.randint(2020, 2024), random.randint(1, 12), random.randint(1, 28))
+            incidence_date = datetime.date(random.randint(2020, 2026), random.randint(1, 12), random.randint(1, 28))
             birth_date = incidence_date.replace(year=incidence_date.year - random.randint(35, 80))
 
             patient = Patient.objects.create(
@@ -116,7 +116,7 @@ class Command(BaseCommand):
             topo_code='C53.9', # Cervix Uteri (Female Only) -> Error!
             morpho_code='8070/3',
             behaviour='3',
-            incidence_date=datetime.date(2024, 1, 1)
+            incidence_date=datetime.date(2026, 1, 1)
         )
 
         error_pt2 = Patient.objects.create(
@@ -130,7 +130,7 @@ class Command(BaseCommand):
             topo_code='C61.9', # Prostate (Male Only) + Impossible Age -> Multiple Errors!
             morpho_code='8140/3',
             behaviour='3',
-            incidence_date=datetime.date(2024, 1, 1)
+            incidence_date=datetime.date(2026, 1, 1)
         )
 
         self.stdout.write(self.style.SUCCESS('Successfully seeded database with 40+ standard cases, 2 duplicates, and 2 Validation errors.'))

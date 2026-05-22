@@ -12,3 +12,4 @@ pytesseract
 pdf2image
 django-two-factor-auth[phonenumbers,yubikey]
 django-otp-yubikey
+djangorestframework-simplejwt
