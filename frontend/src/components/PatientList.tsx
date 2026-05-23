@@ -36,12 +36,8 @@ const PatientList: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<Patient | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [filters, setFilters] = useState({
-        wilaya: '',
-        year: '',
-        topo: '',
-        workflow: ''
-    });
+    // Debounced version of the search query to avoid refetching on every keystroke
+    const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
     const [showFilters, setShowFilters] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -90,13 +86,15 @@ const PatientList: React.FC = () => {
         }
     };
 
+    // Fetch patients; if a debounced search term is present, pass it to the API for server‑side filtering
     const fetchPatients = async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
-            if (searchQuery) params.append('search', searchQuery);
-            // In a real app, backend filtering would be handled here
-            const res = await axios.get('patients/');
+            if (debouncedSearch) params.append('search', debouncedSearch);
+            // Additional filters can be added here as query params in the future
+            const url = params.toString() ? `patients/?${params}` : 'patients/';
+            const res = await axios.get(url);
             setPatients(res.data);
         } catch (err) {
             console.error(err);
@@ -105,8 +103,17 @@ const PatientList: React.FC = () => {
         }
     };
 
+    // Initial load and reload when the debounced search changes
     useEffect(() => {
         fetchPatients();
+    }, [debouncedSearch]);
+
+    // Debounce search input: wait 300 ms after user stops typing before triggering a fetch
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+        }, 300);
+        return () => clearTimeout(handler);
     }, [searchQuery]);
 
     const filteredPatients = patients.filter(p => {
@@ -114,13 +121,13 @@ const PatientList: React.FC = () => {
         const matchYear = !filters.year || (p.birth_date || '').includes(filters.year);
         const matchWorkflow = !filters.workflow || p.workflow === filters.workflow;
         
-        const q = searchQuery.toLowerCase();
+        // Use the debounced search term for client‑side matching (fallback if backend doesn’t filter)
+        const q = debouncedSearch.toLowerCase();
         const matchSearch = !q || 
             (p.first_name || '').toLowerCase().includes(q) || 
             (p.last_name || '').toLowerCase().includes(q) || 
             (p.nid || '').toLowerCase().includes(q);
             
-        // Topography is usually on Tumor, but let's assume we filter by patient search/metadata
         return matchWilaya && matchYear && matchWorkflow && matchSearch;
     });
 
