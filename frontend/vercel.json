@@ -14,7 +14,7 @@
       "destination": "https://registre-cancer-backend.onrender.com/static/admin/:path*"
     },
     {
-      "source": "/((?!api|admin|static/admin).*)",
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ]
