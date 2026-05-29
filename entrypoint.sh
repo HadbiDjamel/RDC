@@ -7,6 +7,14 @@ set -e
 echo "⚙️ Running database migrations..."
 python manage.py migrate --noinput
 
+# Seed database with initial patient data and reference metadata
+echo "🌱 Seeding reference metadata..."
+python seed_medical_reference.py
+echo "🌱 Seeding dynamic form configs..."
+python seed_dynamic_config.py
+echo "🌱 Seeding 1,000 realistic clinical records..."
+python seed_dzcancer.py
+
 # Collect static files for Django Admin
 echo "📂 Collecting static files..."
 python manage.py collectstatic --noinput
