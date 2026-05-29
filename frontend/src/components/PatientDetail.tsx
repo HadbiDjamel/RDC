@@ -153,9 +153,9 @@ const PatientDetail: React.FC<Props> = ({ patient: p, onBack }) => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="portal-card p-6 border-slate-200 bg-white space-y-4">
                                 <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-4">Informations Civiles</h4>
-                                <Row label="Nom Complet" value={p.name} />
+                                <Row label="Nom Complet" value={p.name || `${p.last_name || ''} ${p.first_name || ''}`.trim()} />
                                 <Row label="Date de Naissance" value={p.birth_date || '15/05/1976'} />
-                                <Row label="Sexe" value={p.gender === 'M' ? 'Masculin' : 'Féminin'} />
+                                <Row label="Sexe" value={String(p.gender) === '1' || p.gender === 'M' ? 'Masculin' : 'Féminin'} />
                                 <Row label="Statut Matrimonial" value={extraInfo.matrimonial} />
                                 <Row label="Groupe Ethnique" value={extraInfo.ethnie} />
                             </div>
@@ -168,7 +168,7 @@ const PatientDetail: React.FC<Props> = ({ patient: p, onBack }) => {
                                 </div>
                                 <div className="portal-card p-6 border-slate-200 bg-white space-y-4">
                                     <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-4">Contact & Localisation</h4>
-                                    <Row label="Wilaya de Résidence" value={p.city} />
+                                    <Row label="Wilaya de Résidence" value={p.wilaya_name || p.city} />
                                     <Row label="Email Privé" value={extraInfo.email} />
                                     <Row label="Profession" value={extraInfo.profession} />
                                 </div>
@@ -422,7 +422,7 @@ const PatientDetail: React.FC<Props> = ({ patient: p, onBack }) => {
                 </button>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3">
-                        <h2 className="text-2xl font-black text-slate-800 tracking-tighter truncate">{p.name}</h2>
+                        <h2 className="text-2xl font-black text-slate-800 tracking-tighter truncate">{p.name || `${p.last_name || ''} ${p.first_name || ''}`.trim()}</h2>
                         <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[9px] font-black text-emerald-600 uppercase shadow-sm">VIVANT</span>
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -457,7 +457,7 @@ const PatientDetail: React.FC<Props> = ({ patient: p, onBack }) => {
                             <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest font-inter">Identité & Socio-Dém</h4>
                         </div>
                         <div className="space-y-1">
-                            <SidebarItem icon={User} label="Sexe & Age" value={`${p.gender === 'M' ? 'Masculin' : 'Féminin'} • ${p.age} ans`} color="blue" />
+                            <SidebarItem icon={User} label="Sexe & Age" value={`${String(p.gender) === '1' || p.gender === 'M' ? 'Masculin' : 'Féminin'} • ${p.age || '—'} ans`} color="blue" />
                             <SidebarItem icon={Activity} label="Nationalité" value={extraInfo.nationality} color="blue" />
                             <SidebarItem icon={Shield} label="Email" value={extraInfo.email} color="blue" />
                             <SidebarItem icon={Activity} label="Contact" value={extraInfo.emergency_contact} color="rose" />

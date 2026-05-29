@@ -45,6 +45,10 @@ const PatientList: React.FC = () => {
     const [showFilters, setShowFilters] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Client-side pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
     const exportCSV = async () => {
         try {
             const token = localStorage.getItem('dzcancer_token');
@@ -93,11 +97,8 @@ const PatientList: React.FC = () => {
     const fetchPatients = async () => {
         setLoading(true);
         try {
-            const params = new URLSearchParams();
-            if (searchQuery) params.append('search', searchQuery);
-            // In a real app, backend filtering would be handled here
             const res = await axios.get('patients/');
-            setPatients(res.data);
+            setPatients(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             console.error(err);
         } finally {
@@ -107,7 +108,12 @@ const PatientList: React.FC = () => {
 
     useEffect(() => {
         fetchPatients();
-    }, [searchQuery]);
+    }, []);
+
+    // Reset pagination when search or filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, filters]);
 
     const filteredPatients = patients.filter(p => {
         const matchWilaya = !filters.wilaya || (p.wilaya_name || '').toLowerCase().includes(filters.wilaya.toLowerCase());
@@ -120,9 +126,14 @@ const PatientList: React.FC = () => {
             (p.last_name || '').toLowerCase().includes(q) || 
             (p.nid || '').toLowerCase().includes(q);
             
-        // Topography is usually on Tumor, but let's assume we filter by patient search/metadata
         return matchWilaya && matchYear && matchWorkflow && matchSearch;
     });
+
+    // Pagination calculations
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentPatients = filteredPatients.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
 
     if (loading) return <div className="p-20 text-center animate-pulse text-slate-500">Chargement du registre…</div>;
     if (selected) return <PatientDetail patient={selected} onBack={() => setSelected(null)} />;
@@ -230,66 +241,87 @@ const PatientList: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {filteredPatients.map((p: Patient, index: number) => (
-                            <motion.tr 
-                                key={p.id || index}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.02 }}
-                                onClick={() => setSelected(p)}
-                                className="group hover:bg-slate-50/80 cursor-pointer transition-colors"
-                            >
-                                <td className="px-5 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 group-hover:border-blue-400 transition-colors">
-                                            <span className="text-[10px] font-black text-blue-600 group-hover:text-blue-700 uppercase">{p.last_name[0]}{p.first_name[0]}</span>
+                        {currentPatients.map((p: any, index: number) => {
+                            const lastName = p.last_name || '';
+                            const firstName = p.first_name || '';
+                            const initials = `${lastName[0] || ''}${firstName[0] || ''}`.toUpperCase();
+                            const patientKey = p.patient_id || p.id || index;
+                            
+                            return (
+                                <motion.tr 
+                                    key={patientKey}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: index * 0.02 }}
+                                    onClick={() => setSelected(p)}
+                                    className="group hover:bg-slate-50/80 cursor-pointer transition-colors"
+                                >
+                                    <td className="px-5 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 group-hover:border-blue-400 transition-colors">
+                                                <span className="text-[10px] font-black text-blue-600 group-hover:text-blue-700 uppercase">{initials}</span>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-xs font-bold text-slate-800 uppercase group-hover:text-blue-600 transition-colors">{lastName} {firstName}</h4>
+                                                <p className="text-[9px] text-slate-500 font-mono tracking-widest">{p.nid}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h4 className="text-xs font-bold text-slate-800 uppercase group-hover:text-blue-600 transition-colors">{p.last_name} {p.first_name}</h4>
-                                            <p className="text-[9px] text-slate-500 font-mono tracking-widest">{p.nid}</p>
+                                    </td>
+                                    <td className="px-5 py-4">
+                                        <span className="text-xs font-bold text-slate-600">{String(p.gender) === '1' ? 'Homme' : 'Femme'}</span>
+                                    </td>
+                                    <td className="px-5 py-4">
+                                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                                            <MapPin size={12} className="text-slate-400" /> {p.wilaya_name || 'Inconnu'}
                                         </div>
-                                    </div>
-                                </td>
-                                <td className="px-5 py-4">
-                                    <span className="text-xs font-bold text-slate-600">{p.gender === '1' ? 'Homme' : 'Femme'}</span>
-                                </td>
-                                <td className="px-5 py-4">
-                                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
-                                        <MapPin size={12} className="text-slate-400" /> {p.wilaya_name}
-                                    </div>
-                                </td>
-                                <td className="px-5 py-4">
-                                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
-                                        <Calendar size={12} className="text-slate-400" /> {p.birth_date}
-                                    </div>
-                                </td>
-                                <td className="px-5 py-4">
-                                    <WorkflowBadge workflow={p.workflow} />
-                                </td>
-                                <td className="px-5 py-4 text-right">
-                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0">
-                                        <button className="p-1.5 rounded-lg bg-slate-50 border border-slate-100 hover:bg-blue-600 text-slate-400 hover:text-white transition-all">
-                                            <Eye size={14} />
-                                        </button>
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); /* delete logic */ }}
-                                            className="p-1.5 rounded-lg bg-slate-50 border border-slate-100 hover:bg-rose-500 text-slate-400 hover:text-white transition-all"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
-                                </td>
-                            </motion.tr>
-                        ))}
+                                    </td>
+                                    <td className="px-5 py-4">
+                                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                                            <Calendar size={12} className="text-slate-400" /> {p.birth_date}
+                                        </div>
+                                    </td>
+                                    <td className="px-5 py-4">
+                                        <WorkflowBadge workflow={p.workflow} />
+                                    </td>
+                                    <td className="px-5 py-4 text-right">
+                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0">
+                                            <button className="p-1.5 rounded-lg bg-slate-50 border border-slate-100 hover:bg-blue-600 text-slate-400 hover:text-white transition-all">
+                                                <Eye size={14} />
+                                            </button>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); /* delete logic */ }}
+                                                className="p-1.5 rounded-lg bg-slate-50 border border-slate-100 hover:bg-rose-500 text-slate-400 hover:text-white transition-all"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </motion.tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
 
             <div className="flex justify-between items-center text-[10px] text-slate-500 px-1 font-medium">
-                <p>{patients.length} sur 12,842 patients</p>
+                <p>
+                    {filteredPatients.length > 0 ? `${indexOfFirstItem + 1} à ${Math.min(indexOfLastItem, filteredPatients.length)}` : '0'} sur {patients.length} patients
+                </p>
                 <div className="flex gap-1.5">
-                    <button className="px-2.5 py-1 rounded bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-30 text-slate-600" disabled>Précédent</button>
-                    <button className="px-2.5 py-1 rounded bg-white border border-slate-200 hover:bg-slate-50 text-slate-600">Suivant</button>
+                    <button 
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="px-2.5 py-1 rounded bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-30 text-slate-600 disabled:cursor-not-allowed"
+                    >
+                        Précédent
+                    </button>
+                    <button 
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages || totalPages === 0}
+                        className="px-2.5 py-1 rounded bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-30 text-slate-600 disabled:cursor-not-allowed"
+                    >
+                        Suivant
+                    </button>
                 </div>
             </div>
         </div>
