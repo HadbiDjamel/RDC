@@ -32,6 +32,25 @@ class PatientViewSet(viewsets.ModelViewSet):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
 
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def analytics(self, request):
+        tumors = Tumor.objects.select_related('patient', 'patient__wilaya').all()
+        data = []
+        for t in tumors:
+            p = t.patient
+            data.append({
+                'id': t.id,
+                'birth_date': p.birth_date,
+                'gender': p.gender,
+                'wilaya_name': p.wilaya.name if p.wilaya else 'Inconnu',
+                'wilaya_code': p.wilaya.code if p.wilaya else None,
+                'topo_code': t.topo_code,
+                'morpho_code': t.morpho_code,
+                'incidence_date': t.incidence_date,
+                'basis_of_diagnosis': t.basis_of_diagnosis
+            })
+        return Response(data)
+
     @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def habits_token(self, request, pk=None):
         patient = self.get_object()

@@ -318,8 +318,8 @@ const DynamicStats: React.FC = () => {
                 }
 
                 const [patientsRes, icdo3Res, mapsRes] = await Promise.all([
-                    axios.get('patients/').catch(err => {
-                        console.error("Error fetching patients:", err);
+                    axios.get('patients/analytics/').catch(err => {
+                        console.error("Error fetching patients analytics:", err);
                         return { data: [] };
                     }),
                     axios.get('icdo3/').catch(err => {
@@ -350,35 +350,30 @@ const DynamicStats: React.FC = () => {
                 }, {} as Record<string, string>);
 
                 const flattened: any[] = [];
-                patientsRes.data.forEach((p: any) => {
-                    const genderStr = p.gender === 1 ? 'M' : 'F';
-                    const city = p.wilaya_name || 'Inconnu';
-                    const ageGroup = getAgeGroup(p.birth_date);
-
-                    if (p.tumors && p.tumors.length > 0) {
-                        p.tumors.forEach((t: any) => {
-                            const topo = t.topo_code || 'Inconnu';
-                            const morpho = t.morpho_code || 'Inconnu';
-                            let year = 2026;
-                            if (t.incidence_date) {
-                                if (t.incidence_date.includes('-')) year = parseInt(t.incidence_date.split('-')[0]);
-                                else year = parseInt(t.incidence_date.split('/').pop());
-                            }
-
-                            flattened.push({
-                                id: t.id,
-                                age: ageGroup,
-                                gender: genderStr,
-                                city: city,
-                                topography: icdo3Dict[topo] || topo,
-                                morphology: icdo3Dict[morpho] || morpho,
-                                year: year,
-                                basis: t.basis_of_diagnosis === '1' ? 'Histologie' : t.basis_of_diagnosis === '7' ? 'Cytologie' : 'Clinique',
-                                lat: WILAYA_CENTROIDS[String(p.wilaya).padStart(2, '0')]?.lat || 0,
-                                lng: WILAYA_CENTROIDS[String(p.wilaya).padStart(2, '0')]?.lng || 0
-                            });
-                        });
+                (patientsRes.data || []).forEach((t: any) => {
+                    const genderStr = t.gender === 1 ? 'M' : 'F';
+                    const city = t.wilaya_name || 'Inconnu';
+                    const ageGroup = getAgeGroup(t.birth_date);
+                    const topo = t.topo_code || 'Inconnu';
+                    const morpho = t.morpho_code || 'Inconnu';
+                    let year = 2026;
+                    if (t.incidence_date) {
+                        if (t.incidence_date.includes('-')) year = parseInt(t.incidence_date.split('-')[0]);
+                        else year = parseInt(t.incidence_date.split('/').pop());
                     }
+
+                    flattened.push({
+                        id: t.id,
+                        age: ageGroup,
+                        gender: genderStr,
+                        city: city,
+                        topography: icdo3Dict[topo] || topo,
+                        morphology: icdo3Dict[morpho] || morpho,
+                        year: year,
+                        basis: t.basis_of_diagnosis === '1' ? 'Histologie' : t.basis_of_diagnosis === '7' ? 'Cytologie' : 'Clinique',
+                        lat: WILAYA_CENTROIDS[String(t.wilaya_code).padStart(2, '0')]?.lat || 0,
+                        lng: WILAYA_CENTROIDS[String(t.wilaya_code).padStart(2, '0')]?.lng || 0
+                    });
                 });
                 setRegistryData(flattened);
                 sessionStorage.setItem('dzcancer_cached_registry', JSON.stringify(flattened));
@@ -457,6 +452,7 @@ const DynamicStats: React.FC = () => {
 
     // ── Helper: Data Quality Metrics ──────────────────────────────
     const qualityMetrics = useMemo(() => {
+        if (registryData.length === 0) return { mv: "0", dco: "0", total: 0 };
         const mvCount = registryData.filter(d => d.basis === 'Histologie' || d.basis === 'Cytologie').length;
         const mvPercent = ((mvCount / registryData.length) * 100).toFixed(1);
 
@@ -466,7 +462,7 @@ const DynamicStats: React.FC = () => {
             dco: "2.4", // Standard IARC target is < 5%
             total: registryData.length
         };
-    }, []);
+    }, [registryData]);
 
     // ── Helper: YoY Calculation ──────────────────────────────────
     const yoyStats = useMemo(() => {
@@ -481,7 +477,7 @@ const DynamicStats: React.FC = () => {
             percent,
             trend: diff > 0 ? 'up' : diff < 0 ? 'down' : 'neutral' as const
         };
-    }, []);
+    }, [registryData]);
 
     // ── Data Transformation Logic ───────────────────────────────
     const chartData = useMemo(() => {
