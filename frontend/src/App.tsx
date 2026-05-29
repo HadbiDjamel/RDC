@@ -41,8 +41,11 @@ if (isTauri) {
         ? `http://${configuredIp}:8000/api/`
         : 'http://localhost:8000/api/';
 } else {
-    // Browser (served by Docker nginx on port 5050) — always use relative path
-    axios.defaults.baseURL = '/api/';
+    // Browser
+    const isVercel = window.location.hostname.endsWith('.vercel.app');
+    axios.defaults.baseURL = isVercel
+        ? 'https://registre-cancer-backend.onrender.com/api/'
+        : '/api/';
 }
 
 // Configurer axios pour inclure le token s'il existe

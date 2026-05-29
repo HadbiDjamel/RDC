@@ -57,7 +57,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         ? `http://${cleanedIp}:8000/api/`
         : 'http://localhost:8000/api/';
     } else {
-      axios.defaults.baseURL = '/api/';
+      const isVercel = window.location.hostname.endsWith('.vercel.app');
+      axios.defaults.baseURL = isVercel
+        ? 'https://registre-cancer-backend.onrender.com/api/'
+        : '/api/';
     }
     setShowSettings(false);
   };

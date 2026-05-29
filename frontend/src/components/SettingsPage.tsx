@@ -50,7 +50,10 @@ const SettingsPage: React.FC = () => {
         ? `http://${cleaned}:8000/api/`
         : 'http://localhost:8000/api/';
     } else {
-      axios.defaults.baseURL = '/api/';
+      const isVercel = window.location.hostname.endsWith('.vercel.app');
+      axios.defaults.baseURL = isVercel
+        ? 'https://registre-cancer-backend.onrender.com/api/'
+        : '/api/';
     }
     setServerIp(cleaned);
     setSaved(true);
@@ -63,7 +66,14 @@ const SettingsPage: React.FC = () => {
     localStorage.removeItem('dzcancer_server_ip');
     // Same rule: only Tauri uses localhost:8000 directly.
     const isTauri = window.location.protocol === 'tauri:' || window.location.href.startsWith('tauri:');
-    axios.defaults.baseURL = isTauri ? 'http://localhost:8000/api/' : '/api/';
+    if (isTauri) {
+      axios.defaults.baseURL = 'http://localhost:8000/api/';
+    } else {
+      const isVercel = window.location.hostname.endsWith('.vercel.app');
+      axios.defaults.baseURL = isVercel
+        ? 'https://registre-cancer-backend.onrender.com/api/'
+        : '/api/';
+    }
     setCleared(true);
     setTimeout(() => setCleared(false), 2500);
   };
