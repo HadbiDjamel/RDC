@@ -25,7 +25,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install gunicorn
 
 # Copy project files selectively
-COPY manage.py seed_dzcancer.py ./
+COPY manage.py seed_dzcancer.py seed_medical_reference.py seed_dynamic_config.py ./
 COPY registry ./registry
 COPY backend ./backend
 
