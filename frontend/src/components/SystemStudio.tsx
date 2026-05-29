@@ -22,14 +22,6 @@ const SystemStudio: React.FC = () => {
     });
     const [showSaved, setShowSaved] = useState(false);
     const [activeTab, setActiveTab] = useState<'xml' | 'fields'>('xml');
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setLoading(false);
-        }, 800);
-        return () => clearTimeout(timer);
-    }, []);
 
     // States for adding a new local variable
     const [isAdding, setIsAdding] = useState(false);
@@ -76,25 +68,6 @@ const SystemStudio: React.FC = () => {
         setNewValue('');
         setNewDescription('');
     };
-
-    if (loading) {
-        return (
-            <div className="min-h-[500px] w-full flex flex-col items-center justify-center p-16 space-y-6">
-                <div className="relative flex items-center justify-center">
-                    <div className="w-16 h-16 rounded-full border-4 border-slate-200 border-t-blue-600 animate-spin" />
-                    <Settings className="absolute text-blue-600 animate-pulse" size={24} />
-                </div>
-                <div className="space-y-2 text-center">
-                    <p className="text-sm font-black text-slate-800 uppercase tracking-[0.2em] animate-pulse">
-                        Chargement de System Studio...
-                    </p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest animate-pulse">
-                        Synchronisation avec le noyau DzCancer Core (system_config.xml)
-                    </p>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="max-w-6xl mx-auto space-y-8 py-6">

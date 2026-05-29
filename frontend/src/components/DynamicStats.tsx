@@ -252,7 +252,41 @@ const DynamicStats: React.FC = () => {
     const [loading, setLoading] = useState(true);
 
     if (loading) {
-        // Just empty state while loading
+        return (
+            <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50/50 rounded-[32px] border border-slate-200/60 p-12 min-h-[500px]">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="flex flex-col items-center gap-6 max-w-sm text-center"
+                >
+                    <div className="relative flex items-center justify-center">
+                        {/* Spin Ring */}
+                        <div className="w-16 h-16 rounded-full border-4 border-slate-200 border-t-[#1d6fb5] animate-spin" />
+                        {/* Inner Pulsing Radar Node */}
+                        <div className="absolute w-8 h-8 rounded-full bg-blue-100/50 flex items-center justify-center border border-blue-200/50">
+                            <ActivityIcon size={16} className="text-[#1d6fb5] animate-pulse" />
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                        <h3 className="text-base font-extrabold text-slate-800 tracking-tight">DzCancer Analytics Studio</h3>
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
+                            Chargement des données épidémiologiques et géographiques...
+                        </p>
+                    </div>
+
+                    <div className="w-48 bg-slate-200/60 rounded-full h-1 overflow-hidden">
+                        <motion.div 
+                            initial={{ width: "0%" }}
+                            animate={{ width: "100%" }}
+                            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                            className="bg-blue-600 h-full rounded-full"
+                        />
+                    </div>
+                </motion.div>
+            </div>
+        );
     }
 
     const getAgeGroup = (birthYearStr: string) => {
