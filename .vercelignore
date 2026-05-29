@@ -5,7 +5,23 @@ backend/venv/
 venv/
 .venv/
 
-# Tauri build artifacts (The 4.2GB culprit)
+# Ignore the entire backend code for Vercel
+backend/
+registry/
+manage.py
+requirements.txt
+db.sqlite3
+*.Dockerfile
+Dockerfile*
+render.yaml
+docker-compose.yml
+entrypoint.sh
+seed_*.py
+run_server.py
+Lancer_Serveur.bat
+scratch/
+
+# Tauri build artifacts
 **/src-tauri/target/
 frontend/src-tauri/target/
 src-tauri/target/
