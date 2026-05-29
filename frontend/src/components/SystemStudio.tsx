@@ -4,19 +4,37 @@ import { Settings, Save, Plus, Trash2, FileCode, CheckCircle2, Shield, Activity,
 import AdminDynamicFields from './AdminDynamicFields';
 
 const SystemStudio: React.FC = () => {
-    const [variables, setVariables] = useState([
-        { id: 1, name: 'TNM_EDITION', type: 'Integer', value: '7', description: 'Version du système TNM utilisée' },
-        { id: 2, name: 'SITE_DCO_DEFAULT', type: 'Boolean', value: 'False', description: 'Autoriser DCO par défaut' },
-        { id: 3, name: 'AUTO_CODE_MORPHO', type: 'Boolean', value: 'True', description: 'Codage automatique de la morphologie via IA' },
-        { id: 4, name: 'NID_VALIDATION', type: 'String', value: '^1[0-9]{17}$', description: 'Regex de validation NID Algérien' }
-    ]);
+    const [variables, setVariables] = useState(() => {
+        const saved = localStorage.getItem('sys_variables');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                // Fallback
+            }
+        }
+        return [
+            { id: 1, name: 'TNM_EDITION', type: 'Integer', value: '7', description: 'Version du système TNM utilisée' },
+            { id: 2, name: 'SITE_DCO_DEFAULT', type: 'Boolean', value: 'False', description: 'Autoriser DCO par défaut' },
+            { id: 3, name: 'AUTO_CODE_MORPHO', type: 'Boolean', value: 'True', description: 'Codage automatique de la morphologie via IA' },
+            { id: 4, name: 'NID_VALIDATION', type: 'String', value: '^1[0-9]{17}$', description: 'Regex de validation NID Algérien' }
+        ];
+    });
     const [showSaved, setShowSaved] = useState(false);
     const [activeTab, setActiveTab] = useState<'xml' | 'fields'>('xml');
+
+    // States for adding a new local variable
+    const [isAdding, setIsAdding] = useState(false);
+    const [newName, setNewName] = useState('');
+    const [newType, setNewType] = useState('String');
+    const [newValue, setNewValue] = useState('');
+    const [newDescription, setNewDescription] = useState('');
 
     // Sync with LocalStorage to simulate "working in needed places"
     const handleSave = () => {
         const config = variables.reduce((acc, curr) => ({ ...acc, [curr.name]: curr.value }), {});
         localStorage.setItem('sys_config', JSON.stringify(config));
+        localStorage.setItem('sys_variables', JSON.stringify(variables));
         
         setShowSaved(true);
         setTimeout(() => setShowSaved(false), 3000);
@@ -24,6 +42,31 @@ const SystemStudio: React.FC = () => {
 
     const updateValue = (id: number, newValue: string) => {
         setVariables(prev => prev.map(v => v.id === id ? { ...v, value: newValue } : v));
+    };
+
+    const deleteVariable = (id: number) => {
+        setVariables(prev => prev.filter(v => v.id !== id));
+    };
+
+    const handleAddSave = () => {
+        if (!newName.trim()) return;
+        const newVar = {
+            id: variables.length > 0 ? Math.max(...variables.map((v: any) => v.id)) + 1 : 1,
+            name: newName.trim().toUpperCase().replace(/\s+/g, '_'),
+            type: newType,
+            value: newValue,
+            description: newDescription
+        };
+        setVariables(prev => [...prev, newVar]);
+        handleAddCancel();
+    };
+
+    const handleAddCancel = () => {
+        setIsAdding(false);
+        setNewName('');
+        setNewType('String');
+        setNewValue('');
+        setNewDescription('');
     };
 
     return (
@@ -137,17 +180,90 @@ const SystemStudio: React.FC = () => {
                                                 <p className="text-xs text-slate-500 font-medium">{v.description}</p>
                                             </td>
                                             <td className="px-8 py-5 text-right">
-                                                <button className="p-2 text-slate-300 hover:text-rose-500 transition-colors">
+                                                <button 
+                                                    onClick={() => deleteVariable(v.id)}
+                                                    className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                                                    title="Supprimer la variable"
+                                                >
                                                     <Trash2 size={16} />
                                                 </button>
                                             </td>
                                         </tr>
                                     ))}
+
+                                    {isAdding && (
+                                        <tr className="bg-blue-50/10 border-t border-blue-100">
+                                            <td className="px-8 py-5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-blue-600 text-white rounded-lg">
+                                                        <Code2 size={14} />
+                                                    </div>
+                                                    <input
+                                                        type="text"
+                                                        value={newName}
+                                                        onChange={(e) => setNewName(e.target.value)}
+                                                        placeholder="NOM_VARIABLE"
+                                                        className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-mono font-black text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                                    />
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-5 text-center">
+                                                <select
+                                                    value={newType}
+                                                    onChange={(e) => setNewType(e.target.value)}
+                                                    className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-[9px] font-black text-slate-500 uppercase tracking-tighter focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                                >
+                                                    <option value="String">String</option>
+                                                    <option value="Integer">Integer</option>
+                                                    <option value="Boolean">Boolean</option>
+                                                    <option value="Float">Float</option>
+                                                </select>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <input
+                                                    type="text"
+                                                    value={newValue}
+                                                    onChange={(e) => setNewValue(e.target.value)}
+                                                    placeholder="Valeur"
+                                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                                />
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <input
+                                                    type="text"
+                                                    value={newDescription}
+                                                    onChange={(e) => setNewDescription(e.target.value)}
+                                                    placeholder="Description du noyau"
+                                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-medium text-slate-500 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                                />
+                                            </td>
+                                            <td className="px-8 py-5 text-right space-x-1.5">
+                                                <button
+                                                    onClick={handleAddSave}
+                                                    disabled={!newName.trim()}
+                                                    className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border border-emerald-200 disabled:opacity-30 disabled:hover:bg-emerald-50 disabled:hover:text-emerald-600 active:scale-95"
+                                                    title="Confirmer l'ajout"
+                                                >
+                                                    Ajouter
+                                                </button>
+                                                <button
+                                                    onClick={handleAddCancel}
+                                                    className="px-2.5 py-1.5 bg-slate-50 hover:bg-rose-600 text-slate-500 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border border-slate-200 active:scale-95"
+                                                    title="Annuler l'ajout"
+                                                >
+                                                    Annuler
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
                         <div className="p-6 bg-slate-50/30 border-t border-slate-100">
-                            <button className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 transition-colors">
+                            <button 
+                                onClick={() => setIsAdding(true)}
+                                className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 transition-colors"
+                            >
                                 <Plus size={16} strokeWidth={3} />
                                 Ajouter une variable locale au noyau
                             </button>
