@@ -318,9 +318,18 @@ const DynamicStats: React.FC = () => {
                 }
 
                 const [patientsRes, icdo3Res, mapsRes] = await Promise.all([
-                    axios.get('patients/'),
-                    axios.get('icdo3/'),
-                    axios.get('personalized-maps/')
+                    axios.get('patients/').catch(err => {
+                        console.error("Error fetching patients:", err);
+                        return { data: [] };
+                    }),
+                    axios.get('icdo3/').catch(err => {
+                        console.error("Error fetching icdo3:", err);
+                        return { data: [] };
+                    }),
+                    axios.get('personalized-maps/').catch(err => {
+                        console.error("Error fetching personalized-maps:", err);
+                        return { data: [] };
+                    })
                 ]);
 
                 const migratedMaps = (mapsRes.data || []).map((m: any) => ({
@@ -331,7 +340,9 @@ const DynamicStats: React.FC = () => {
                     }))
                 }));
                 setPersonalizedMaps(migratedMaps);
-                sessionStorage.setItem('dzcancer_cached_maps', JSON.stringify(migratedMaps));
+                if (migratedMaps.length > 0) {
+                    sessionStorage.setItem('dzcancer_cached_maps', JSON.stringify(migratedMaps));
+                }
 
                 const icdo3Dict = (icdo3Res.data || []).reduce((acc: any, curr: any) => {
                     acc[curr.code] = curr.description_fr;
