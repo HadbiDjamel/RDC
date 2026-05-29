@@ -293,7 +293,7 @@ const PatientForm: React.FC<PatientFormProps> = ({ role, prefillData, initialDat
                 phone: formData.phone || null,
                 nationality: formData.nationality,
                 address_1: formData.address_1 || null,
-                address_2: formData.address_2 || null,
+                address_2: null,
                 wilaya: formData.wilaya || null,
                 commune: formData.commune || null,
                 vital_status: formData.vital_status || 'A',
