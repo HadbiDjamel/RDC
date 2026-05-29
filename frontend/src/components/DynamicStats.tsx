@@ -306,6 +306,17 @@ const DynamicStats: React.FC = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
+                // Try retrieving cached data first
+                const cachedRegistry = sessionStorage.getItem('dzcancer_cached_registry');
+                const cachedMaps = sessionStorage.getItem('dzcancer_cached_maps');
+                
+                if (cachedRegistry && cachedMaps) {
+                    setRegistryData(JSON.parse(cachedRegistry));
+                    setPersonalizedMaps(JSON.parse(cachedMaps));
+                    setLoading(false);
+                    return;
+                }
+
                 const [patientsRes, icdo3Res, mapsRes] = await Promise.all([
                     axios.get('patients/'),
                     axios.get('icdo3/'),
@@ -320,6 +331,7 @@ const DynamicStats: React.FC = () => {
                     }))
                 }));
                 setPersonalizedMaps(migratedMaps);
+                sessionStorage.setItem('dzcancer_cached_maps', JSON.stringify(migratedMaps));
 
                 const icdo3Dict = (icdo3Res.data || []).reduce((acc: any, curr: any) => {
                     acc[curr.code] = curr.description_fr;
@@ -358,6 +370,7 @@ const DynamicStats: React.FC = () => {
                     }
                 });
                 setRegistryData(flattened);
+                sessionStorage.setItem('dzcancer_cached_registry', JSON.stringify(flattened));
             } catch (err) {
                 console.error(err);
             } finally {
