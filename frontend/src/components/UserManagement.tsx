@@ -7,7 +7,6 @@ import {
 import axios from 'axios';
 
 interface Wilaya {
-  id: number;
   code: string;
   name: string;
 }
@@ -58,7 +57,7 @@ const UserManagement: React.FC = () => {
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [role, setRole] = useState('doctor');
+  const [role, setRole] = useState('DOCTOR');
   const [wilayaId, setWilayaId] = useState<string>('');
   const [institution, setInstitution] = useState('');
   const [phone, setPhone] = useState('');
@@ -106,7 +105,7 @@ const UserManagement: React.FC = () => {
       last_name: lastName.trim(),
       profile: {
         role,
-        wilaya: wilayaId ? parseInt(wilayaId) : null,
+        wilaya: wilayaId || null,   // send the code string directly (e.g. "02")
         institution: institution.trim(),
         phone: phone.trim()
       }
@@ -122,7 +121,7 @@ const UserManagement: React.FC = () => {
       setEmail('');
       setFirstName('');
       setLastName('');
-      setRole('doctor');
+      setRole('DOCTOR');
       setWilayaId('');
       setInstitution('');
       setPhone('');
@@ -344,10 +343,10 @@ const UserManagement: React.FC = () => {
                       onChange={(e) => setRole(e.target.value)}
                       className="w-full px-4 py-2 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none text-xs transition-all font-semibold"
                     >
-                      <option value="doctor">Médecin (Saisie Clinique)</option>
-                      <option value="anapath">Pathologiste (Codage CIM-O-3)</option>
-                      <option value="lab">Laboratoire (Marqueurs/Biomarqueurs)</option>
-                      <option value="admin">Administrateur (Registraire)</option>
+                      <option value="DOCTOR">Médecin (Saisie Clinique)</option>
+                      <option value="ANAPATH">Pathologiste (Codage CIM-O-3)</option>
+                      <option value="LAB">Laboratoire (Marqueurs/Biomarqueurs)</option>
+                      <option value="ADMIN">Administrateur (Registraire)</option>
                     </select>
                   </div>
 
@@ -363,7 +362,7 @@ const UserManagement: React.FC = () => {
                       >
                         <option value="">Sélectionnez la Wilaya</option>
                         {wilayas.map(w => (
-                          <option key={w.id} value={w.id}>{w.code} - {w.name}</option>
+                          <option key={w.code} value={w.code}>{w.code} - {w.name}</option>
                         ))}
                       </select>
                     </div>

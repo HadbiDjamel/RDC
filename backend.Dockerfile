@@ -33,8 +33,12 @@ COPY backend ./backend
 # We will do this in the entrypoint or during build if we have a dummy env
 # RUN python manage.py collectstatic --noinput
 
+# Copy and prepare entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Expose port
 EXPOSE 8000
 
-# Start gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "backend.wsgi:application"]
+# Set entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]

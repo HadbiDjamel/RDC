@@ -1,14 +1,22 @@
-/* Updated handleSubmit to normalize payload */
+/* Updated handleSubmit to normalize payload and include role */
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setLoading(true);
+  const role = formData.role;
+  const roleMap: Record<string, string> = {
+    admin: 'ADMIN',
+    medecin: 'DOCTOR',
+    anapate: 'ANAPATH',
+    labo: 'LAB',
+  };
   // Prepare payload with normalized fields
   const payload = {
     ...formData,
-    // Ensure role is uppercase as expected by backend
-    role: formData.role ? formData.role.toUpperCase() : undefined,
-    // Ensure wilaya code is two digits, pad with leading zero if needed
-    wilaya: formData.wilaya ? formData.wilaya.padStart(2, '0') : undefined,
+    // Nest role and wilaya under profile as expected by backend serializer
+    profile: {
+      role: roleMap[role] || undefined,
+      wilaya: formData.wilaya ? formData.wilaya.padStart(2, '0') : undefined,
+    },
   };
   try {
     const res = await fetch('/api/patients/', {
@@ -17,11 +25,9 @@ const handleSubmit = async (e: React.FormEvent) => {
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error('Failed');
-    // success handling
     setSuccess(true);
   } catch (e) {
     console.error(e);
-    // could set error state
   } finally {
     setLoading(false);
   }

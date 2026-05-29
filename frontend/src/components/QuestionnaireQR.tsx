@@ -33,9 +33,13 @@ const QuestionnaireQR: React.FC<QuestionnaireQRProps> = ({ patientId, patientNam
 
   const getFullUrl = () => {
     if (!token) return '';
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isTauri = window.location.protocol === 'tauri:' || window.location.href.startsWith('tauri:');
+    if (!isLocal && !isTauri) {
+      return `${window.location.origin}/habit/${token}`;
+    }
     if (serverIp) return `http://${serverIp}:5050/habit/${token}`;
-    if (window.location.protocol === 'tauri:' || window.location.href.startsWith('tauri:'))
-      return `http://localhost:5050/habit/${token}`;
+    if (isTauri) return `http://localhost:5050/habit/${token}`;
     return `${window.location.origin}/habit/${token}`;
   };
 

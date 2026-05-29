@@ -34,6 +34,16 @@ DEBUG = env('DEBUG', default=True)
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])
 
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[
+    'https://*.vercel.app',
+    'https://*.onrender.com',
+    'https://*.trycloudflare.com',
+    'https://*.localtunnel.me',
+    'https://*.ngrok-free.app',
+    'http://localhost:5050',
+    'http://127.0.0.1:5050',
+])
+
 
 # Application definition
 
@@ -56,6 +66,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
